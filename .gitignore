@@ -1,0 +1,85 @@
+# =============================================================================
+# Vox-SN — .gitignore
+# =============================================================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- Virtualenv ---
+venv_vox/
+venv/
+.venv/
+env/
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# --- Données générées ---
+data/posts/*.json
+data/posts/*.csv
+models/checkpoints/
+models/*.pkl
+models/*.parquet
+
+# --- Logs ---
+*.log
+logs/
+airflow/logs/*
+!airflow/logs/.gitkeep
+spark-warehouse/
+metastore_db/
+derby.log
+
+# --- Docker ---
+.docker/
+docker-volumes/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Tests & coverage ---
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# --- Secrets ---
+.env
+*.pem
+*.key
+secrets.yml
+
+# --- MLflow ---
+mlruns/
+mlartifacts/
+
+# --- Checkpoints Spark Streaming ---
+/tmp/vox_*_ckpt
+checkpoints/
+
+# --- Rapport généré ---
+rapport_crise_wave.png
+dashboard_*.html
+
+# --- Distribution ---
+*.zip
+*.tar.gz
+!sample_*.zip

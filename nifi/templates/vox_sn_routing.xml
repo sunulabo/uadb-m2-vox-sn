@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+====================================================================
+  Vox-SN — Template NiFi : Routage par opérateur
+====================================================================
+
+  Flux logique :
+  
+    GenerateFlowFile  (ou TailFile sur data/posts/*.json)
+           │
+           ▼
+    EvaluateJsonPath  (extrait service_cible)
+           │
+           ▼
+    RouteOnAttribute  (6 routes : WAVE, OM, FREE, SENELEC, EAU, TER)
+           │
+           ├─► PublishKafka [topic = social_raw, key = service_cible]
+           │     pour chaque route
+           │
+           └─► LogAttribute  (pour les ratés)
+  
+  ⚠️ IMPORT : NiFi UI → Operate Palette → Upload Template
+              puis Drag the Template Icon → Add → Choisir vox_sn_routing
+  
+  💡 Variables à configurer (Controller Services) :
+       kafka.brokers = kafka:9092
+       posts.input.dir = /opt/nifi/data/posts
+
+  Auteur : Vox-SN Team — UADB M2 BD&IA 2025-2026
+====================================================================
+-->
+<template encoding-version="1.4">
+    <description>Vox-SN — Routage des posts citoyens par opérateur vers Kafka social_raw</description>
+    <groupId>00000000-0000-0000-0000-000000000000</groupId>
+    <name>vox_sn_routing</name>
+    <snippet>
+        <!-- ============================================================ -->
+        <!-- Processor 1 : Lecture des posts (TailFile)                   -->
+        <!-- ============================================================ -->
+        <processors>
+            <id>11111111-1111-1111-1111-111111111111</id>
+            <parentGroupId>00000000-0000-0000-0000-000000000000</parentGroupId>
+            <position><x>100.0</x><y>100.0</y></position>
+            <bundle>
+                <artifact>nifi-standard-nar</artifact>
+                <group>org.apache.nifi</group>
+                <version>1.23.2</version>
+            </bundle>
+            <config>
+                <bulletinLevel>WARN</bulletinLevel>
+                <comments>Lit en continu les fichiers JSON déposés dans /opt/nifi/data/posts</comments>
+                <concurrentlySchedulableTaskCount>1</concurrentlySchedulableTaskCount>
+                <executionNode>ALL</executionNode>
+                <penaltyDuration>30 sec</penaltyDuration>
+                <properties>
+                    <entry>
+                        <key>File to Tail</key>
+                        <value>/opt/nifi/data/posts/feed.json</value>
+                    </entry>
+                    <entry>
+                        <key>Rolling Filename Pattern</key>
+                        <value>feed.*.json</value>
+                    </entry>
+                    <entry>
+                        <key>tail-mode</key>
+                        <value>Single file</value>
+                    </entry>
+                </properties>
+                <schedulingPeriod>5 sec</schedulingPeriod>
+                <schedulingStrategy>TIMER_DRIVEN</schedulingStrategy>
+                <yieldDuration>1 sec</yieldDuration>
+            </config>
+            <name>Tail_Posts_File</name>
+            <relationships>
+                <autoTerminate>false</autoTerminate>
+                <name>success</name>
+            </relationships>
+            <state>STOPPED</state>
+            <style/>
+            <type>org.apache.nifi.processors.standard.TailFile</type>
+        </processors>
+
+        <!-- ============================================================ -->
+        <!-- Processor 2 : EvaluateJsonPath — extraire service_cible      -->
+        <!-- ============================================================ -->
+        <processors>
+            <id>22222222-2222-2222-2222-222222222222</id>
+            <parentGroupId>00000000-0000-0000-0000-000000000000</parentGroupId>
+            <position><x>400.0</x><y>100.0</y></position>
+            <bundle>
+                <artifact>nifi-standard-nar</artifact>
+                <group>org.apache.nifi</group>
+                <version>1.23.2</version>
+            </bundle>
+            <config>
+                <comments>Extrait le service_cible et la langue pour le routage</comments>
+                <properties>
+                    <entry>
+                        <key>Destination</key>
+                        <value>flowfile-attribute</value>
+                    </entry>
+                    <entry>
+                        <key>service_cible</key>
+                        <value>$.service_cible</value>
+                    </entry>
+                    <entry>
+                        <key>langue</key>
+                        <value>$.langue</value>
+                    </entry>
+                </properties>
+                <schedulingPeriod>0 sec</schedulingPeriod>
+                <schedulingStrategy>TIMER_DRIVEN</schedulingStrategy>
+            </config>
+            <name>Extract_Service</name>
+            <relationships>
+                <autoTerminate>true</autoTerminate>
+                <name>failure</name>
+            </relationships>
+            <relationships>
+                <autoTerminate>true</autoTerminate>
+                <name>unmatched</name>
+            </relationships>
+            <relationships>
+                <autoTerminate>false</autoTerminate>
+                <name>matched</name>
+            </relationships>
+            <state>STOPPED</state>
+            <type>org.apache.nifi.processors.standard.EvaluateJsonPath</type>
+        </processors>
+
+        <!-- ============================================================ -->
+        <!-- Processor 3 : RouteOnAttribute — 6 routes par opérateur      -->
+        <!-- ============================================================ -->
+        <processors>
+            <id>33333333-3333-3333-3333-333333333333</id>
+            <parentGroupId>00000000-0000-0000-0000-000000000000</parentGroupId>
+            <position><x>700.0</x><y>100.0</y></position>
+            <bundle>
+                <artifact>nifi-standard-nar</artifact>
+                <group>org.apache.nifi</group>
+                <version>1.23.2</version>
+            </bundle>
+            <config>
+                <comments>Route les posts vers 6 sorties distinctes selon service_cible</comments>
+                <properties>
+                    <entry>
+                        <key>Routing Strategy</key>
+                        <value>Route to Property name</value>
+                    </entry>
+                    <entry>
+                        <key>WAVE</key>
+                        <value>${service_cible:equals('WAVE')}</value>
+                    </entry>
+                    <entry>
+                        <key>ORANGE_MONEY</key>
+                        <value>${service_cible:equals('ORANGE_MONEY')}</value>
+                    </entry>
+                    <entry>
+                        <key>FREE_MONEY</key>
+                        <value>${service_cible:equals('FREE_MONEY')}</value>
+                    </entry>
+                    <entry>
+                        <key>SENELEC</key>
+                        <value>${service_cible:equals('SENELEC')}</value>
+                    </entry>
+                    <entry>
+                        <key>SEN_EAU</key>
+                        <value>${service_cible:equals('SEN_EAU')}</value>
+                    </entry>
+                    <entry>
+                        <key>TER</key>
+                        <value>${service_cible:equals('TER')}</value>
+                    </entry>
+                </properties>
+            </config>
+            <name>Route_Par_Operateur</name>
+            <relationships>
+                <autoTerminate>true</autoTerminate>
+                <name>unmatched</name>
+            </relationships>
+            <relationships>
+                <autoTerminate>false</autoTerminate>
+                <name>WAVE</name>
+            </relationships>
+            <relationships>
+                <autoTerminate>false</autoTerminate>
+                <name>ORANGE_MONEY</name>
+            </relationships>
+            <relationships>
+                <autoTerminate>false</autoTerminate>
+                <name>FREE_MONEY</name>
+            </relationships>
+            <relationships>
+                <autoTerminate>false</autoTerminate>
+                <name>SENELEC</name>
+            </relationships>
+            <relationships>
+                <autoTerminate>false</autoTerminate>
+                <name>SEN_EAU</name>
+            </relationships>
+            <relationships>
+                <autoTerminate>false</autoTerminate>
+                <name>TER</name>
+            </relationships>
+            <state>STOPPED</state>
+            <type>org.apache.nifi.processors.standard.RouteOnAttribute</type>
+        </processors>
+
+        <!-- ============================================================ -->
+        <!-- Processor 4 : PublishKafka_2_6 → topic social_raw            -->
+        <!-- ============================================================ -->
+        <processors>
+            <id>44444444-4444-4444-4444-444444444444</id>
+            <parentGroupId>00000000-0000-0000-0000-000000000000</parentGroupId>
+            <position><x>1000.0</x><y>100.0</y></position>
+            <bundle>
+                <artifact>nifi-kafka-2-6-nar</artifact>
+                <group>org.apache.nifi</group>
+                <version>1.23.2</version>
+            </bundle>
+            <config>
+                <comments>Publie les posts routés vers le topic Kafka social_raw avec key=service_cible</comments>
+                <properties>
+                    <entry>
+                        <key>bootstrap.servers</key>
+                        <value>kafka:9092</value>
+                    </entry>
+                    <entry>
+                        <key>topic</key>
+                        <value>social_raw</value>
+                    </entry>
+                    <entry>
+                        <key>kafka-key</key>
+                        <value>${service_cible}</value>
+                    </entry>
+                    <entry>
+                        <key>acks</key>
+                        <value>all</value>
+                    </entry>
+                    <entry>
+                        <key>compression.type</key>
+                        <value>snappy</value>
+                    </entry>
+                </properties>
+            </config>
+            <name>Publish_Social_Raw</name>
+            <relationships>
+                <autoTerminate>true</autoTerminate>
+                <name>success</name>
+            </relationships>
+            <relationships>
+                <autoTerminate>false</autoTerminate>
+                <name>failure</name>
+            </relationships>
+            <state>STOPPED</state>
+            <type>org.apache.nifi.processors.kafka.pubsub.PublishKafka_2_6</type>
+        </processors>
+
+        <!-- ============================================================ -->
+        <!-- Connexions                                                    -->
+        <!-- ============================================================ -->
+        <connections>
+            <id>c1-tail-to-extract</id>
+            <name>tail → extract</name>
+            <source>
+                <groupId>00000000-0000-0000-0000-000000000000</groupId>
+                <id>11111111-1111-1111-1111-111111111111</id>
+                <type>PROCESSOR</type>
+            </source>
+            <destination>
+                <groupId>00000000-0000-0000-0000-000000000000</groupId>
+                <id>22222222-2222-2222-2222-222222222222</id>
+                <type>PROCESSOR</type>
+            </destination>
+            <selectedRelationships>success</selectedRelationships>
+            <backPressureDataSizeThreshold>1 GB</backPressureDataSizeThreshold>
+            <backPressureObjectThreshold>10000</backPressureObjectThreshold>
+        </connections>
+
+        <connections>
+            <id>c2-extract-to-route</id>
+            <name>extract → route</name>
+            <source>
+                <groupId>00000000-0000-0000-0000-000000000000</groupId>
+                <id>22222222-2222-2222-2222-222222222222</id>
+                <type>PROCESSOR</type>
+            </source>
+            <destination>
+                <groupId>00000000-0000-0000-0000-000000000000</groupId>
+                <id>33333333-3333-3333-3333-333333333333</id>
+                <type>PROCESSOR</type>
+            </destination>
+            <selectedRelationships>matched</selectedRelationships>
+        </connections>
+
+        <connections>
+            <id>c3-route-to-publish</id>
+            <name>WAVE/OM/FREE/SENELEC/EAU/TER → Kafka</name>
+            <source>
+                <groupId>00000000-0000-0000-0000-000000000000</groupId>
+                <id>33333333-3333-3333-3333-333333333333</id>
+                <type>PROCESSOR</type>
+            </source>
+            <destination>
+                <groupId>00000000-0000-0000-0000-000000000000</groupId>
+                <id>44444444-4444-4444-4444-444444444444</id>
+                <type>PROCESSOR</type>
+            </destination>
+            <selectedRelationships>WAVE</selectedRelationships>
+            <selectedRelationships>ORANGE_MONEY</selectedRelationships>
+            <selectedRelationships>FREE_MONEY</selectedRelationships>
+            <selectedRelationships>SENELEC</selectedRelationships>
+            <selectedRelationships>SEN_EAU</selectedRelationships>
+            <selectedRelationships>TER</selectedRelationships>
+        </connections>
+    </snippet>
+    <timestamp>2025-10-15 10:00:00 UTC</timestamp>
+</template>

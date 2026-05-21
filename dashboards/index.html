@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vox-SN — Dashboard Temps Réel</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .header {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    padding: 24px 32px;
+    border-radius: 16px;
+    margin-bottom: 24px;
+    box-shadow: 0 10px 30px rgba(79, 70, 229, 0.3);
+  }
+  .header h1 { font-size: 28px; margin-bottom: 8px; }
+  .header p { opacity: 0.9; font-size: 14px; }
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .kpi {
+    background: #1e293b;
+    padding: 20px;
+    border-radius: 12px;
+    border-left: 4px solid #4f46e5;
+  }
+  .kpi-label { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+  .kpi-value { font-size: 32px; font-weight: 700; margin-top: 8px; color: #fff; }
+  .kpi-trend { font-size: 12px; margin-top: 4px; }
+  .kpi-trend.up { color: #10b981; }
+  .kpi-trend.down { color: #ef4444; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+  .panel {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 20px;
+    min-height: 380px;
+  }
+  .panel h3 { margin-bottom: 16px; font-size: 16px; color: #cbd5e1; }
+  .alert-banner {
+    background: linear-gradient(90deg, #dc2626, #ea580c);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+  .alert-icon { font-size: 24px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+  }
+  th, td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid #334155;
+    font-size: 13px;
+  }
+  th { color: #94a3b8; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+  .status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .status-CRISE { background: #dc2626; color: white; }
+  .status-ATTENTION { background: #ea580c; color: white; }
+  .status-NORMAL { background: #10b981; color: white; }
+  .footer {
+    margin-top: 32px;
+    text-align: center;
+    font-size: 12px;
+    color: #64748b;
+  }
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📊 Vox-SN — Dashboard Temps Réel</h1>
+  <p>Écoute citoyenne · Services publics & Fintech Sénégal · UADB M2 BD&IA 2025-2026</p>
+</div>
+
+<div class="alert-banner" id="alertBanner" style="display:none;">
+  <span class="alert-icon">🚨</span>
+  <div>
+    <strong>ALERTE CRISE</strong> — <span id="alertText">Wave : sentiment moyen -0.67 sur la dernière heure</span>
+  </div>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="kpi-label">Posts ingérés (24h)</div>
+    <div class="kpi-value" id="kpiPosts">12,847</div>
+    <div class="kpi-trend up">▲ +18% vs hier</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Sentiment moyen</div>
+    <div class="kpi-value" id="kpiSentiment">-0.12</div>
+    <div class="kpi-trend down">▼ -0.08 vs hier</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Crises actives</div>
+    <div class="kpi-value" id="kpiCrises" style="color:#ef4444;">2</div>
+    <div class="kpi-trend">WAVE, SENELEC</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">PII détectés (rejetés)</div>
+    <div class="kpi-value" id="kpiPII">347</div>
+    <div class="kpi-trend">100% bloqués</div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h3>⚔️ Battle Mobile Money — Sentiment 7 jours</h3>
+    <div id="chartBattle" style="height: 300px;"></div>
+  </div>
+
+  <div class="panel">
+    <h3>📈 Évolution sentiment (24h)</h3>
+    <div id="chartTimeline" style="height: 300px;"></div>
+  </div>
+
+  <div class="panel">
+    <h3>🏷️ Distribution des catégories</h3>
+    <div id="chartCategories" style="height: 300px;"></div>
+  </div>
+
+  <div class="panel">
+    <h3>🌍 Parts de voix par service</h3>
+    <div id="chartParts" style="height: 300px;"></div>
+  </div>
+
+  <div class="panel" style="grid-column: span 2;">
+    <h3>🔥 Alertes actives</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>Catégorie</th>
+          <th>Sentiment</th>
+          <th>Nb posts</th>
+          <th>Début</th>
+          <th>Statut</th>
+        </tr>
+      </thead>
+      <tbody id="alertsTable">
+        <tr>
+          <td><strong>WAVE</strong></td>
+          <td>TECHNIQUE</td>
+          <td>-0.67</td>
+          <td>43</td>
+          <td>il y a 1h22</td>
+          <td><span class="status-badge status-CRISE">CRISE</span></td>
+        </tr>
+        <tr>
+          <td><strong>SENELEC</strong></td>
+          <td>TECHNIQUE</td>
+          <td>-0.58</td>
+          <td>28</td>
+          <td>il y a 38 min</td>
+          <td><span class="status-badge status-CRISE">CRISE</span></td>
+        </tr>
+        <tr>
+          <td><strong>ORANGE_MONEY</strong></td>
+          <td>TARIF</td>
+          <td>-0.34</td>
+          <td>19</td>
+          <td>il y a 2h</td>
+          <td><span class="status-badge status-ATTENTION">ATTENTION</span></td>
+        </tr>
+        <tr>
+          <td><strong>TER</strong></td>
+          <td>SERVICE_CLIENT</td>
+          <td>+0.12</td>
+          <td>12</td>
+          <td>—</td>
+          <td><span class="status-badge status-NORMAL">NORMAL</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="footer">
+  ⚙️ Données simulées · Mise à jour : <span id="lastUpdate"></span> · 
+  Vox-SN © 2025-2026 · Encadrant : Mr Ahmed Ben Sidy Bouya SEYE (Sonatel)
+</div>
+
+<script>
+// Couleurs unifiées
+const C = {
+  bg: '#1e293b', grid: '#334155', text: '#e2e8f0',
+  wave: '#06b6d4', om: '#f97316', free: '#a855f7',
+  senelec: '#facc15', eau: '#3b82f6', ter: '#10b981',
+  red: '#ef4444', green: '#10b981', orange: '#f97316'
+};
+
+const layoutBase = {
+  paper_bgcolor: 'rgba(0,0,0,0)',
+  plot_bgcolor: 'rgba(0,0,0,0)',
+  font: { color: C.text, size: 11 },
+  margin: { t: 20, r: 20, b: 50, l: 50 },
+  xaxis: { gridcolor: C.grid, color: C.text },
+  yaxis: { gridcolor: C.grid, color: C.text }
+};
+
+// 1. Battle Mobile Money
+Plotly.newPlot('chartBattle', [{
+  type: 'bar',
+  x: ['Wave', 'Orange Money', 'Free Money'],
+  y: [-0.42, -0.18, -0.31],
+  marker: { color: [C.red, C.orange, C.red] },
+  text: ['-0.42', '-0.18', '-0.31'],
+  textposition: 'outside'
+}], {
+  ...layoutBase,
+  yaxis: { ...layoutBase.yaxis, title: 'Sentiment moyen', range: [-0.7, 0.2] },
+  shapes: [{
+    type: 'line', x0: -0.5, x1: 2.5, y0: -0.5, y1: -0.5,
+    line: { color: C.red, width: 2, dash: 'dash' }
+  }]
+}, { responsive: true, displayModeBar: false });
+
+// 2. Timeline 24h
+const hours = Array.from({length: 24}, (_, i) => `${String(i).padStart(2,'0')}h`);
+const sentWave  = [-0.1,-0.15,-0.12,-0.08,0.1,0.05,-0.1,-0.2,-0.35,-0.55,-0.62,-0.67,
+                   -0.6,-0.5,-0.45,-0.3,-0.25,-0.2,-0.15,-0.1,-0.05,0,0.05,-0.05];
+const sentOM    = [-0.05,-0.08,-0.1,-0.05,0,0.02,-0.05,-0.08,-0.12,-0.15,-0.18,-0.2,
+                   -0.18,-0.15,-0.12,-0.1,-0.08,-0.05,0,0.05,-0.02,-0.05,-0.08,-0.1];
+const sentSEN   = [0,0,0.05,0,0.1,0.05,-0.1,-0.3,-0.45,-0.5,-0.55,-0.58,
+                   -0.5,-0.4,-0.3,-0.2,-0.15,-0.1,-0.05,0,0.05,0,-0.05,-0.1];
+
+Plotly.newPlot('chartTimeline', [
+  { x: hours, y: sentWave, name: 'Wave', line: { color: C.wave, width: 2 }, mode: 'lines' },
+  { x: hours, y: sentOM, name: 'Orange Money', line: { color: C.om, width: 2 }, mode: 'lines' },
+  { x: hours, y: sentSEN, name: 'Senelec', line: { color: C.senelec, width: 2 }, mode: 'lines' },
+], {
+  ...layoutBase,
+  yaxis: { ...layoutBase.yaxis, title: 'Sentiment' },
+  legend: { orientation: 'h', y: -0.2 },
+  shapes: [{
+    type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: -1, y1: -0.5,
+    fillcolor: C.red, opacity: 0.08, line: { width: 0 }
+  }]
+}, { responsive: true, displayModeBar: false });
+
+// 3. Catégories
+Plotly.newPlot('chartCategories', [{
+  type: 'pie',
+  labels: ['TECHNIQUE', 'TARIF', 'FRAUDE', 'SERVICE_CLIENT', 'POSITIF', 'AUTRE'],
+  values: [38, 22, 12, 14, 9, 5],
+  marker: { colors: [C.red, C.orange, '#dc2626', '#8b5cf6', C.green, '#64748b'] },
+  textfont: { color: '#fff' }
+}], {
+  ...layoutBase,
+  margin: { t: 20, r: 20, b: 20, l: 20 }
+}, { responsive: true, displayModeBar: false });
+
+// 4. Parts de voix
+Plotly.newPlot('chartParts', [{
+  type: 'bar',
+  orientation: 'h',
+  x: [28, 22, 11, 18, 12, 9],
+  y: ['Wave', 'Orange Money', 'Free Money', 'Senelec', 'Sen Eau', 'TER'],
+  marker: { color: [C.wave, C.om, C.free, C.senelec, C.eau, C.ter] },
+  text: ['28%', '22%', '11%', '18%', '12%', '9%'],
+  textposition: 'outside'
+}], {
+  ...layoutBase,
+  xaxis: { ...layoutBase.xaxis, title: 'Part de voix (%)', range: [0, 35] }
+}, { responsive: true, displayModeBar: false });
+
+// Bannière d'alerte
+document.getElementById('alertBanner').style.display = 'flex';
+
+// Heure de mise à jour
+document.getElementById('lastUpdate').textContent =
+  new Date().toLocaleString('fr-FR');
+</script>
+
+</body>
+</html>

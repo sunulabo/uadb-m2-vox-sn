@@ -1,0 +1,202 @@
+[
+  {
+    "post_id": "POST_000001",
+    "user_id": "user_dakar_001",
+    "timestamp": "2026-05-15T08:23:14Z",
+    "source": "twitter",
+    "lang": "fr",
+    "text": "Wave c'est vraiment génial, transfert instantané et frais réduits. Bravo !",
+    "service_mentionne": "WAVE",
+    "geo": "Dakar"
+  },
+  {
+    "post_id": "POST_000002",
+    "user_id": "user_thies_042",
+    "timestamp": "2026-05-15T08:24:03Z",
+    "source": "twitter",
+    "lang": "wo",
+    "text": "Orange Money dafa teye torop, douma gënn legi !",
+    "service_mentionne": "ORANGE_MONEY",
+    "geo": "Thies"
+  },
+  {
+    "post_id": "POST_000003",
+    "user_id": "user_saint_louis_088",
+    "timestamp": "2026-05-15T08:25:47Z",
+    "source": "facebook",
+    "lang": "fr",
+    "text": "Coupure SENELEC à Saint-Louis depuis 3 heures. C'est inadmissible, on paye pour quoi ?",
+    "service_mentionne": "SENELEC",
+    "geo": "Saint-Louis"
+  },
+  {
+    "post_id": "POST_000004",
+    "user_id": "user_dakar_127",
+    "timestamp": "2026-05-15T08:26:12Z",
+    "source": "twitter",
+    "lang": "mix",
+    "text": "Free Money moy gënn, frais yi dafa cher na bu baax.",
+    "service_mentionne": "FREE_MONEY",
+    "geo": "Dakar"
+  },
+  {
+    "post_id": "POST_000005",
+    "user_id": "user_diourbel_015",
+    "timestamp": "2026-05-15T08:27:33Z",
+    "source": "twitter",
+    "lang": "fr",
+    "text": "Le TER est rapide et confortable, c'est une fierté pour le Sénégal !",
+    "service_mentionne": "TER",
+    "geo": "Diourbel"
+  },
+  {
+    "post_id": "POST_000006",
+    "user_id": "user_dakar_233",
+    "timestamp": "2026-05-15T08:28:01Z",
+    "source": "twitter",
+    "lang": "fr",
+    "text": "SEN'EAU ne marche pas depuis ce matin, robinet à sec dans tout le quartier. Catastrophe.",
+    "service_mentionne": "SEN_EAU",
+    "geo": "Dakar"
+  },
+  {
+    "post_id": "POST_000007",
+    "user_id": "user_ziguinchor_009",
+    "timestamp": "2026-05-15T08:29:18Z",
+    "source": "facebook",
+    "lang": "wo",
+    "text": "Wave dafa baax torop, mën nga yónni xaalis ci 2 segond.",
+    "service_mentionne": "WAVE",
+    "geo": "Ziguinchor"
+  },
+  {
+    "post_id": "POST_000008",
+    "user_id": "user_kaolack_054",
+    "timestamp": "2026-05-15T08:30:22Z",
+    "source": "twitter",
+    "lang": "fr",
+    "text": "Orange Money a encore des frais cachés. J'ai été facturé 500 FCFA sans explication. Arnaque !",
+    "service_mentionne": "ORANGE_MONEY",
+    "geo": "Kaolack"
+  },
+  {
+    "post_id": "POST_000009",
+    "user_id": "user_dakar_456",
+    "timestamp": "2026-05-15T08:31:09Z",
+    "source": "twitter",
+    "lang": "fr",
+    "text": "Application Wave plante depuis la mise à jour. Bug technique à corriger urgent.",
+    "service_mentionne": "WAVE",
+    "geo": "Dakar"
+  },
+  {
+    "post_id": "POST_000010",
+    "user_id": "user_mbour_021",
+    "timestamp": "2026-05-15T08:32:44Z",
+    "source": "twitter",
+    "lang": "mix",
+    "text": "SENELEC dafa teye, coupure bu bare na. Khalat na ay sociétés privées.",
+    "service_mentionne": "SENELEC",
+    "geo": "Mbour"
+  },
+  {
+    "post_id": "POST_000011",
+    "user_id": "user_dakar_789",
+    "timestamp": "2026-05-15T08:33:55Z",
+    "source": "twitter",
+    "lang": "fr",
+    "text": "Service client Free Money réactif et professionnel. Problème résolu en 10 minutes !",
+    "service_mentionne": "FREE_MONEY",
+    "geo": "Dakar"
+  },
+  {
+    "post_id": "POST_000012",
+    "user_id": "user_louga_033",
+    "timestamp": "2026-05-15T08:34:27Z",
+    "source": "facebook",
+    "lang": "wo",
+    "text": "SEN'EAU rafet na, ndox mi neexna ci sunu kër.",
+    "service_mentionne": "SEN_EAU",
+    "geo": "Louga"
+  },
+  {
+    "post_id": "POST_000013",
+    "user_id": "user_dakar_321",
+    "timestamp": "2026-05-15T08:35:08Z",
+    "source": "twitter",
+    "lang": "fr",
+    "text": "Fraude détectée sur mon compte Wave, 50 000 FCFA volés. Personne ne répond au support !",
+    "service_mentionne": "WAVE",
+    "geo": "Dakar"
+  },
+  {
+    "post_id": "POST_000014",
+    "user_id": "user_thies_167",
+    "timestamp": "2026-05-15T08:36:41Z",
+    "source": "twitter",
+    "lang": "fr",
+    "text": "Le TER est en retard de 30 minutes, comme d'habitude. Pas terrible pour un train neuf.",
+    "service_mentionne": "TER",
+    "geo": "Thies"
+  },
+  {
+    "post_id": "POST_000015",
+    "user_id": "user_dakar_555",
+    "timestamp": "2026-05-15T08:37:19Z",
+    "source": "twitter",
+    "lang": "wo",
+    "text": "Orange Money dafa baax, mom moy gënn ci dolé ak sécurité.",
+    "service_mentionne": "ORANGE_MONEY",
+    "geo": "Dakar"
+  },
+  {
+    "post_id": "POST_000016",
+    "user_id": "user_fatick_077",
+    "timestamp": "2026-05-15T08:38:02Z",
+    "source": "facebook",
+    "lang": "fr",
+    "text": "Tarifs SENELEC trop élevés, facture de 25 000 FCFA pour un studio. C'est de l'arnaque !",
+    "service_mentionne": "SENELEC",
+    "geo": "Fatick"
+  },
+  {
+    "post_id": "POST_000017",
+    "user_id": "user_dakar_999",
+    "timestamp": "2026-05-15T08:39:35Z",
+    "source": "twitter",
+    "lang": "mix",
+    "text": "Wave moy gënn fokk, frais yi tuuti rekk.",
+    "service_mentionne": "WAVE",
+    "geo": "Dakar"
+  },
+  {
+    "post_id": "POST_000018",
+    "user_id": "user_kolda_044",
+    "timestamp": "2026-05-15T08:40:18Z",
+    "source": "twitter",
+    "lang": "fr",
+    "text": "SEN'EAU a coupé l'eau sans préavis. Aucune communication, c'est révoltant !",
+    "service_mentionne": "SEN_EAU",
+    "geo": "Kolda"
+  },
+  {
+    "post_id": "POST_000019",
+    "user_id": "user_dakar_678",
+    "timestamp": "2026-05-15T08:41:50Z",
+    "source": "twitter",
+    "lang": "fr",
+    "text": "Free Money toujours en panne le week-end. Quand vont-ils stabiliser le service ?",
+    "service_mentionne": "FREE_MONEY",
+    "geo": "Dakar"
+  },
+  {
+    "post_id": "POST_000020",
+    "user_id": "user_rufisque_012",
+    "timestamp": "2026-05-15T08:42:14Z",
+    "source": "twitter",
+    "lang": "wo",
+    "text": "TER bi dafa rafet, mën nga dem Dakar ci 45 minutes rekk. Mashallah !",
+    "service_mentionne": "TER",
+    "geo": "Rufisque"
+  }
+]
