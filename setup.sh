@@ -63,15 +63,18 @@ if command -v free &> /dev/null; then
     # Linux
     RAM_AVAIL_GB=$(free -g | awk '/^Mem:/{print $7}')
 elif command -v vm_stat &> /dev/null; then
-    # macOS : RAM disponible = (pages libres + pages inactives) × taille de page
-    RAM_AVAIL_GB=$(vm_stat | awk '
-        /page size of ([0-9]+)/  { page = $NF }
-        /Pages free:/            { gsub(/\./, "", $3); free = $3 }
-        /Pages inactive:/        { gsub(/\./, "", $3); inactive = $3 }
-        END { printf "%d", (free + inactive) * page / 1073741824 }
-    ')
+    # macOS : parse vm_stat via Python pour éviter les subtilités awk
+    RAM_AVAIL_GB=$(python3 - <<'PYEOF'
+import subprocess, re
+out = subprocess.check_output(['vm_stat'], text=True)
+page = int(re.search(r'page size of (\d+)', out).group(1))
+free     = int(re.search(r'Pages free:\s+(\d+)', out).group(1))
+inactive = int(re.search(r'Pages inactive:\s+(\d+)', out).group(1))
+print(int((free + inactive) * page / 1073741824))
+PYEOF
+)
 else
-    log_warn "Impossible de vérifier la RAM (commande 'free' et 'vm_stat' absentes)."
+    log_warn "Impossible de vérifier la RAM."
     RAM_AVAIL_GB=99
 fi
 if [ "$RAM_AVAIL_GB" -lt 8 ]; then
@@ -116,6 +119,30 @@ log_info "Activation venv et installation des dépendances..."
 # shellcheck source=/dev/null
 source venv_vox/bin/activate
 pip install --upgrade pip --quiet
+
+# Sur macOS, google-re2 (dep transitive d'Airflow) nécessite :
+#  • les headers abseil/re2 (Homebrew)
+#  • C++17 (abseil 2026+ rejette C++14)
+#  • pybind11 (header-only, requis par le build C++ de google-re2)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    if command -v brew &> /dev/null; then
+        log_info "macOS — installation de re2 + abseil via Homebrew..."
+        HOMEBREW_NO_AUTO_UPDATE=1 brew install re2 abseil --quiet 2>/dev/null || \
+            log_warn "brew install re2/abseil échoué."
+    fi
+
+    log_info "macOS — pré-installation de pybind11 + flag C++17 pour google-re2..."
+    pip install "pybind11>=2.11" --quiet
+
+    PYBIND11_INC=$(python3 -c "import pybind11; print(pybind11.get_include())" 2>/dev/null || echo "")
+    BREW_PREFIX=$(brew --prefix 2>/dev/null || echo "/usr/local")
+    export CXXFLAGS="-std=c++17 -I${BREW_PREFIX}/include ${PYBIND11_INC:+-I${PYBIND11_INC}}"
+    export CFLAGS="-std=c++17"
+    export LDFLAGS="-L${BREW_PREFIX}/lib"
+
+    log_ok "Environnement C++ configuré (C++17, abseil=${BREW_PREFIX}/include, pybind11)."
+fi
+
 pip install -r requirements.txt --quiet
 log_ok "Dépendances Python installées."
 
@@ -141,13 +168,13 @@ docker compose ps
 # 6. Création des topics Kafka
 # =============================================================================
 log_info "Création des topics Kafka..."
-docker exec kafka kafka-topics.sh --bootstrap-server localhost:9092 \
+docker exec vox_kafka kafka-topics --bootstrap-server localhost:9092 \
     --create --if-not-exists --topic social_raw \
     --partitions 3 --replication-factor 1 || true
-docker exec kafka kafka-topics.sh --bootstrap-server localhost:9092 \
+docker exec vox_kafka kafka-topics --bootstrap-server localhost:9092 \
     --create --if-not-exists --topic social_analyzed \
     --partitions 3 --replication-factor 1 || true
-docker exec kafka kafka-topics.sh --bootstrap-server localhost:9092 \
+docker exec vox_kafka kafka-topics --bootstrap-server localhost:9092 \
     --create --if-not-exists --topic social_sentiment_agg \
     --partitions 3 --replication-factor 1 || true
 log_ok "Topics Kafka créés."
@@ -171,7 +198,7 @@ echo "  • NiFi     : http://localhost:8081/nifi"
 echo "  • Spark    : http://localhost:8080"
 echo "  • HBase    : http://localhost:16010"
 echo "  • Airflow  : http://localhost:8082    (admin/admin)"
-echo "  • MLflow   : http://localhost:5000"
+echo "  • MLflow   : http://localhost:5001"
 echo ""
 echo "Prochaines étapes :"
 echo "  make produce        # Lancer le simulateur de posts"

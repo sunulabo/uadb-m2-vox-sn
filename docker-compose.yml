@@ -16,16 +16,18 @@ services:
   # 1. ZOOKEEPER — Coordination Kafka
   # ============================================================================
   zookeeper:
-    image: bitnami/zookeeper:3.8
+    image: confluentinc/cp-zookeeper:7.6.1
     container_name: vox_zookeeper
     restart: unless-stopped
     environment:
-      ALLOW_ANONYMOUS_LOGIN: "yes"
-      ZOO_LOG_LEVEL: "WARN"
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_LOG4J_ROOT_LOGLEVEL: WARN
     ports:
       - "2181:2181"
     volumes:
-      - zk_data:/bitnami/zookeeper
+      - zk_data:/var/lib/zookeeper/data
+      - zk_log:/var/lib/zookeeper/log
     networks: [vox_sn_net]
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "2181"]
@@ -37,7 +39,7 @@ services:
   # 2. KAFKA — Message Broker temps réel
   # ============================================================================
   kafka:
-    image: bitnami/kafka:3.3
+    image: confluentinc/cp-kafka:7.6.1
     container_name: vox_kafka
     restart: unless-stopped
     depends_on:
@@ -47,17 +49,16 @@ services:
       - "9092:9092"
       - "9093:9093"
     environment:
-      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,EXTERNAL://:9093
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9093
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
-      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      ALLOW_PLAINTEXT_LISTENER: "yes"
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_CFG_NUM_PARTITIONS: "3"
-      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: "1"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
     volumes:
-      - kafka_data:/bitnami/kafka
+      - kafka_data:/var/lib/kafka/data
     networks: [vox_sn_net]
 
   # ============================================================================
@@ -100,15 +101,13 @@ services:
   # 5. SPARK MASTER — NLP Pipeline
   # ============================================================================
   spark-master:
-    image: bitnami/spark:3.3
+    image: apache/spark:3.5.0
     container_name: vox_spark_master
+    user: root
     restart: unless-stopped
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
     environment:
-      SPARK_MODE: master
-      SPARK_RPC_AUTHENTICATION_ENABLED: "no"
-      SPARK_RPC_ENCRYPTION_ENABLED: "no"
-      SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED: "no"
-      SPARK_SSL_ENABLED: "no"
+      SPARK_NO_DAEMONIZE: "true"
       CITIZEN_SECRET_SALT: ${CITIZEN_SECRET_SALT:-UADB_VOX_2025}
       PYSPARK_PYTHON: python3
     ports:
@@ -124,14 +123,15 @@ services:
   # 6. SPARK WORKER
   # ============================================================================
   spark-worker:
-    image: bitnami/spark:3.3
+    image: apache/spark:3.5.0
     container_name: vox_spark_worker
+    user: root
     restart: unless-stopped
     depends_on: [spark-master]
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
     environment:
-      SPARK_MODE: worker
-      SPARK_MASTER_URL: spark://spark-master:7077
-      SPARK_WORKER_MEMORY: 2G
+      SPARK_NO_DAEMONIZE: "true"
+      SPARK_WORKER_MEMORY: 2g
       SPARK_WORKER_CORES: 2
       CITIZEN_SECRET_SALT: ${CITIZEN_SECRET_SALT:-UADB_VOX_2025}
     volumes:
@@ -226,7 +226,7 @@ services:
     container_name: vox_mlflow
     restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "5001:5000"
     volumes:
       - mlflow_data:/mlflow
     command: >
@@ -242,6 +242,7 @@ services:
 # ------------------------------------------------------------------------------
 volumes:
   zk_data:        {driver: local}
+  zk_log:         {driver: local}
   kafka_data:     {driver: local}
   nifi_data:      {driver: local}
   hbase_data:     {driver: local}
