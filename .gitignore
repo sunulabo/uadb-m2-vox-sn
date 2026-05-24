@@ -1,0 +1,7 @@
+venv_vox/
+__pycache__/
+*.pyc
+.ivy2/
+models/classifier_latest/
+rapport_crise_wave.png
+metastore_db/
