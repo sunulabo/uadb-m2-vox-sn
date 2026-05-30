@@ -16,7 +16,7 @@ SHELL        := /bin/bash
 COMPOSE      := docker compose
 VENV         := venv_vox
 PYTHON       := $(if $(wildcard $(VENV)/bin/python),$(VENV)/bin/python,python3)
-SPARK_SUBMIT := docker exec spark-master spark-submit --master spark://spark-master:7077
+SPARK_SUBMIT := docker exec vox_spark_master /opt/spark/bin/spark-submit --master spark://spark-master:7077
 
 # Couleurs
 GREEN := \033[0;32m
@@ -75,6 +75,11 @@ hbase-init: ## Crée les tables HBase (vox:posts, vox:alertes, vox:sentiment_agg
 		    python:3.9-slim \
 		    bash -c "pip install -q happybase thrift && python hbase/hbase_setup.py" )
 
+hbase-seed: ## Charge des posts anonymisés de démo dans vox:posts
+	@test -f $(VENV)/bin/python || (echo "Erreur: venv absent — lancez ./setup.sh" && exit 1)
+	@docker exec -d vox_hbase bash -c 'hbase thrift start -p 9090' && sleep 5
+	@HBASE_HOST=localhost $(PYTHON) hbase/seed_demo_posts.py --rows 20
+
 hive-init: ## Crée les tables et vues Hive
 	$(COMPOSE) up -d hive-server
 	@echo "Attente du démarrage HiveServer2 (60s)..."
@@ -106,12 +111,12 @@ produce: ## Lance le simulateur de posts citoyens (Kafka producer)
 stream: ## Lance le pipeline NLP Spark Streaming
 	@echo -e "$(GREEN)Lancement Spark Streaming NLP...$(NC)"
 	$(SPARK_SUBMIT) \
-		--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0 \
+		--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 \
 		--conf spark.jars.ivy=/tmp/.ivy \
-		/opt/vox/spark/streaming_sentiment.py
+		/opt/spark-apps/streaming_sentiment.py
 
 consume: ## Visualise les posts analysés sur Kafka
-	docker exec kafka kafka-console-consumer.sh \
+	docker exec vox_kafka kafka-console-consumer \
 		--bootstrap-server localhost:9092 \
 		--topic social_analyzed --from-beginning --max-messages 10
 
@@ -122,7 +127,7 @@ inject-crisis: ## Injecte 50 posts négatifs WAVE pour déclencher l'alerte CRIS
 # Machine Learning
 # -----------------------------------------------------------------------------
 train: ## Entraîne les modèles Logistic Regression + Random Forest
-	$(SPARK_SUBMIT) /opt/vox/spark/train_classifier.py \
+	$(SPARK_SUBMIT) /opt/spark-apps/train_classifier.py \
 		--output-path /opt/models/classifier_latest \
 		--window-days 30
 

@@ -20,7 +20,7 @@ Pipeline temps réel qui :
 Lancement :
     spark-submit \
         --master spark://spark-master:7077 \
-        --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0 \
+        --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 \
         streaming_sentiment.py
 
 Encadrant : Mr Ahmed Ben Sidy Bouya SEYE - Groupe Sonatel
@@ -85,7 +85,7 @@ def build_spark() -> SparkSession:
         .config("spark.sql.streaming.checkpointLocation", CHECKPOINT_DIR)
         .config(
             "spark.jars.packages",
-            "org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0",
+            "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0",
         )
         .getOrCreate()
     )

@@ -43,17 +43,18 @@ count 'vox:posts', INTERVAL => 10000
 
 ### Scan limité avec colonnes filtrées
 ```
-scan 'vox:posts', {LIMIT => 5, COLUMNS => ['content:text', 'analysis:sentiment_score', 'analysis:service']}
+scan 'vox:posts', {LIMIT => 5, COLUMNS => ['nlp:texte_clean', 'nlp:sentiment_score', 'meta:service_cible']}
 ```
 
-### Get un post précis
+### Get un post précis (preuve anonymisation — ⭐ capture 13)
 ```
 get 'vox:posts', 'POST_000001'
 ```
+Attendu : colonnes `meta:*`, `nlp:*`, `privacy:citizen_id_secure` — **sans** `user_id` ni `phone_number`.
 
 ### Get une colonne spécifique
 ```
-get 'vox:posts', 'POST_000001', 'analysis:sentiment_score'
+get 'vox:posts', 'POST_000001', 'nlp:sentiment_score'
 ```
 
 ---
@@ -216,7 +217,7 @@ get 'vox:posts', 'POST_000001'
 
 # 4. Filtrer les messages négatifs en Wolof
 scan 'vox:posts', {
-  FILTER => "SingleColumnValueFilter('content', 'lang', =, 'binary:wo') AND SingleColumnValueFilter('analysis', 'sentiment_score', <, 'binary:-0.5')",
+  FILTER => "SingleColumnValueFilter('meta', 'langue', =, 'binary:WO') AND SingleColumnValueFilter('nlp', 'sentiment_score', <, 'binary:-0.5')",
   LIMIT => 10
 }
 
