@@ -6,7 +6,7 @@
 
 .PHONY: help setup up down restart logs ps clean \
         produce stream consume \
-        hbase-init hive-init airflow-init \
+        hbase-init hive-init kafka-topics airflow-init \
         train report dashboard \
         test test-schema test-lexique test-udf test-kafka \
         format lint zip
@@ -14,8 +14,8 @@
 # Variables
 SHELL        := /bin/bash
 COMPOSE      := docker compose
-PYTHON       := python3
 VENV         := venv_vox
+PYTHON       := $(if $(wildcard $(VENV)/bin/python),$(VENV)/bin/python,python3)
 SPARK_SUBMIT := docker exec spark-master spark-submit --master spark://spark-master:7077
 
 # Couleurs
@@ -64,24 +64,44 @@ clean: ## Nettoyage complet (volumes inclus, ATTENTION destructif)
 # Initialisation des composants
 # -----------------------------------------------------------------------------
 hbase-init: ## Crée les tables HBase (vox:posts, vox:alertes, vox:sentiment_agg)
-	docker exec -it spark-master python /opt/vox/hbase/hbase_setup.py 2>/dev/null || \
-		$(PYTHON) hbase/hbase_setup.py
+	@test -f $(VENV)/bin/python || (echo "Erreur: venv absent — lancez ./setup.sh" && exit 1)
+	@echo "Démarrage du serveur Thrift HBase (port 9090)..."
+	@docker exec -d vox_hbase bash -c 'hbase thrift start -p 9090' && sleep 8
+	@HBASE_HOST=localhost $(PYTHON) hbase/hbase_setup.py || \
+		( echo "Fallback via réseau Docker (vox_hbase)..." && \
+		  docker run --rm --network vox_sn_net \
+		    -v "$(CURDIR):/app" -w /app \
+		    -e HBASE_HOST=vox_hbase \
+		    python:3.9-slim \
+		    bash -c "pip install -q happybase thrift && python hbase/hbase_setup.py" )
 
 hive-init: ## Crée les tables et vues Hive
-	docker cp hive/hive_setup.sql hive-metastore:/tmp/hive_setup.sql
-	docker exec hive-metastore beeline -u jdbc:hive2://localhost:10000 \
+	$(COMPOSE) up -d hive-server
+	@echo "Attente du démarrage HiveServer2 (60s)..."
+	@sleep 60
+	docker cp hive/hive_setup.sql vox_hive_server:/tmp/hive_setup.sql
+	@HIVE_CID=$$(docker inspect -f '{{.Id}}' vox_hive_server | cut -c1-12); \
+	docker exec vox_hive_server beeline -u "jdbc:hive2://$$HIVE_CID:10000/" \
 		-f /tmp/hive_setup.sql
 
 airflow-init: ## Active le DAG Airflow vox_sn_monitoring
-	docker exec airflow airflow dags reserialize
-	docker exec airflow airflow dags unpause vox_sn_monitoring
+	docker exec vox_airflow airflow dags reserialize
+	docker exec vox_airflow airflow dags unpause vox_sn_monitoring
+
+kafka-topics: ## Crée les topics Kafka (social_raw, social_analyzed, social_sentiment_agg)
+	@for topic in social_raw social_analyzed social_sentiment_agg; do \
+		docker exec vox_kafka kafka-topics --bootstrap-server localhost:9092 \
+			--create --if-not-exists --topic $$topic \
+			--partitions 3 --replication-factor 1; \
+	done
+	@echo -e "$(GREEN)Topics Kafka créés.$(NC)"
 
 # -----------------------------------------------------------------------------
 # Pipeline runtime
 # -----------------------------------------------------------------------------
 produce: ## Lance le simulateur de posts citoyens (Kafka producer)
 	@echo -e "$(GREEN)Démarrage simulateur Vox-SN (Ctrl+C pour stopper)$(NC)"
-	$(PYTHON) kafka/kafka_producer_vox.py
+	KAFKA_BROKERS=localhost:9093 $(PYTHON) kafka/kafka_producer_vox.py
 
 stream: ## Lance le pipeline NLP Spark Streaming
 	@echo -e "$(GREEN)Lancement Spark Streaming NLP...$(NC)"

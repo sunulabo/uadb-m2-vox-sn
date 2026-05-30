@@ -23,9 +23,13 @@ import logging
 import os
 import re
 import sys
+from pathlib import Path
 
+from dotenv import load_dotenv
 from kafka import KafkaConsumer
 from kafka.errors import KafkaError
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -65,7 +69,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Consommateur de contrôle Vox-SN")
     parser.add_argument(
         "--brokers",
-        default=os.environ.get("KAFKA_BROKERS", "kafka:9092"),
+        default=os.environ.get("KAFKA_BROKERS", "localhost:9093"),
     )
     parser.add_argument("--topic", required=True)
     parser.add_argument("--max", type=int, default=10, help="Messages à consommer")

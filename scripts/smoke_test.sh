@@ -8,6 +8,13 @@
 
 set -e
 
+# Python du venv si disponible (pandera, pytest, etc.)
+if [ -f "venv_vox/bin/python" ]; then
+  PYTHON="venv_vox/bin/python"
+else
+  PYTHON="python3"
+fi
+
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
@@ -61,16 +68,16 @@ check "NiFi UI (8081)"               "curl -fsS -k https://localhost:8081 -o /de
 check "Airflow UI (8082)"            "curl -fsS http://localhost:8082/health -o /dev/null"
 check "HBase UI (16010)"             "curl -fsS http://localhost:16010 -o /dev/null"
 check "Kafka UI (8090)"              "curl -fsS http://localhost:8090 -o /dev/null"
-check "MLflow UI (5000)"             "curl -fsS http://localhost:5000 -o /dev/null"
+check "MLflow UI (5001)"             "curl -fsS http://localhost:5001 -o /dev/null"
 echo
 
 # ------------------------------------------------------------------
 # 3. Kafka topics
 # ------------------------------------------------------------------
 echo -e "${YELLOW}[3/6] Topics Kafka${NC}"
-check "Topic social_raw existe"      "docker exec vox_kafka kafka-topics.sh --bootstrap-server localhost:9092 --list | grep -q social_raw"
-check "Topic social_analyzed existe" "docker exec vox_kafka kafka-topics.sh --bootstrap-server localhost:9092 --list | grep -q social_analyzed"
-check "Topic social_sentiment_agg"   "docker exec vox_kafka kafka-topics.sh --bootstrap-server localhost:9092 --list | grep -q social_sentiment_agg"
+check "Topic social_raw existe"      "docker exec vox_kafka kafka-topics --bootstrap-server localhost:9092 --list | grep -q social_raw"
+check "Topic social_analyzed existe" "docker exec vox_kafka kafka-topics --bootstrap-server localhost:9092 --list | grep -q social_analyzed"
+check "Topic social_sentiment_agg"   "docker exec vox_kafka kafka-topics --bootstrap-server localhost:9092 --list | grep -q social_sentiment_agg"
 echo
 
 # ------------------------------------------------------------------
@@ -86,7 +93,7 @@ echo
 # 5. Hive
 # ------------------------------------------------------------------
 echo -e "${YELLOW}[5/6] Hive${NC}"
-check "Beeline (10000)"              "nc -z localhost 10000"
+check "Beeline (10000)"              "docker exec vox_hive_server beeline -u jdbc:hive2://localhost:10000 -e 'SHOW DATABASES' 2>&1 | grep -qE 'database_name|default'"
 check "Base vox_sn existe"           "docker exec vox_hive_server beeline -u jdbc:hive2://localhost:10000 -e 'SHOW DATABASES' 2>&1 | grep -q vox_sn"
 echo
 
@@ -94,9 +101,9 @@ echo
 # 6. Code Python local
 # ------------------------------------------------------------------
 echo -e "${YELLOW}[6/6] Code Python${NC}"
-check "Import lexique_sn"            "python3 -c 'import sys; sys.path.insert(0, \"spark\"); import lexique_sn'"
-check "Import schema (Pandera)"      "python3 -c 'import sys; sys.path.insert(0, \"spark\"); import schema'"
-check "Tests pytest disponibles"     "python3 -m pytest --collect-only tests/ 2>&1 | grep -q 'test'"
+check "Import lexique_sn"            "$PYTHON -c 'import sys; sys.path.insert(0, \"spark\"); import lexique_sn'"
+check "Import schema (Pandera)"      "$PYTHON -c 'import sys; sys.path.insert(0, \"spark\"); import schema'"
+check "Tests pytest disponibles"     "$PYTHON -m pytest --collect-only tests/ 2>&1 | grep -q 'test'"
 echo
 
 # ------------------------------------------------------------------

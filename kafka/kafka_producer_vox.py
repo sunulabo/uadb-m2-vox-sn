@@ -37,10 +37,14 @@ import sys
 import time
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
 from kafka import KafkaProducer
 from kafka.errors import KafkaError
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 # -----------------------------------------------------------------------------
 # Configuration logging
@@ -285,7 +289,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Simulateur Vox-SN")
     parser.add_argument(
         "--brokers",
-        default=os.environ.get("KAFKA_BROKERS", "kafka:9092"),
+        default=os.environ.get("KAFKA_BROKERS", "localhost:9093"),
         help="Liste des brokers Kafka (csv).",
     )
     parser.add_argument(

@@ -144,6 +144,8 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 pip install -r requirements.txt --quiet
+# pandera 0.17.x : éviter multimethod>=2 (ImportError: overload)
+pip install 'multimethod<2' --quiet 2>/dev/null || true
 log_ok "Dépendances Python installées."
 
 # =============================================================================
@@ -157,9 +159,9 @@ log_info "Démarrage Kafka, NiFi, HBase, Hive Metastore..."
 docker compose up -d kafka nifi hbase hive-metastore
 sleep 30
 
-log_info "Démarrage Spark master + worker, Airflow, MLflow..."
-docker compose up -d spark-master spark-worker airflow mlflow
-sleep 15
+log_info "Démarrage Hive Server, Spark, Airflow, MLflow..."
+docker compose up -d hive-server spark-master spark-worker airflow mlflow
+sleep 30
 
 log_info "Vérification des conteneurs..."
 docker compose ps
@@ -183,7 +185,23 @@ log_ok "Topics Kafka créés."
 # 7. Initialisation HBase
 # =============================================================================
 log_info "Initialisation des tables HBase..."
-python3 hbase/hbase_setup.py || log_warn "Init HBase à relancer manuellement."
+log_info "Démarrage du serveur Thrift HBase (port 9090)..."
+docker exec -d vox_hbase bash -c 'hbase thrift start -p 9090' 2>/dev/null || true
+sleep 10
+if HBASE_HOST=localhost python3 hbase/hbase_setup.py; then
+    log_ok "Tables HBase créées."
+else
+    log_warn "Fallback via réseau Docker (vox_hbase)..."
+    if docker run --rm --network vox_sn_net \
+        -v "$(pwd):/app" -w /app \
+        -e HBASE_HOST=vox_hbase \
+        python:3.9-slim \
+        bash -c "pip install -q happybase thrift && python hbase/hbase_setup.py"; then
+        log_ok "Tables HBase créées (via Docker)."
+    else
+        log_warn "Init HBase à relancer manuellement : make hbase-init"
+    fi
+fi
 
 # =============================================================================
 # 8. Récapitulatif final
@@ -203,6 +221,7 @@ echo ""
 echo "Prochaines étapes :"
 echo "  make produce        # Lancer le simulateur de posts"
 echo "  make stream         # Lancer le pipeline NLP Spark"
+echo "  make hbase-init     # Initialiser les tables HBase (si échec ci-dessus)"
 echo "  make hive-init      # Initialiser les tables Hive"
 echo "  make test           # Lancer la suite de tests"
 echo ""
