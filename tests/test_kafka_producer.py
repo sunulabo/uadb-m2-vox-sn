@@ -33,12 +33,21 @@ class TestSimulateurPosts:
     def gen_post(self):
         """Importe gen_post sans déclencher KafkaProducer."""
         import sys
+        import types
         import unittest.mock as mock
-        with mock.patch.dict('sys.modules', {
-            'kafka': mock.MagicMock(),
-        }):
-            if 'kafka_producer_vox' in sys.modules:
-                del sys.modules['kafka_producer_vox']
+
+        mock_kafka = types.ModuleType("kafka")
+        mock_kafka.KafkaProducer = mock.MagicMock()
+        mock_errors = types.ModuleType("kafka.errors")
+        mock_errors.KafkaError = Exception
+
+        with mock.patch.dict(
+            sys.modules,
+            {
+                "kafka": mock_kafka,
+                "kafka.errors": mock_errors,
+            },
+        ):
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
             yield mod.gen_post
