@@ -37,6 +37,8 @@ data/posts/*.csv
 models/checkpoints/
 models/*.pkl
 models/*.parquet
+models/classifier_latest/
+models/*.png
 
 # --- Logs ---
 *.log

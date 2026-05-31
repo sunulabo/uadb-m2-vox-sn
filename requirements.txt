@@ -1,10 +1,10 @@
 # =============================================================================
 # Vox-SN — requirements.txt
-# Testé avec Python 3.9 / Java 11 / Spark 3.3
+# Testé avec Python 3.9 / Java 11–21 / Spark 3.5
 # =============================================================================
 
 # --- Core pipeline ---
-pyspark==3.3.2
+pyspark==3.5.0
 kafka-python==2.0.2
 py4j==0.10.9.5
 

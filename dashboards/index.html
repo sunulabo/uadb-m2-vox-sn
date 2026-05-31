@@ -5,242 +5,441 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vox-SN — Dashboard Temps Réel</title>
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --bg: #0b1120;
+    --bg-elev: #131c31;
+    --bg-elev-2: #1b2740;
+    --border: #243049;
+    --border-soft: #1c2638;
+    --text: #e8edf6;
+    --text-muted: #93a1bd;
+    --text-dim: #64748b;
+    --brand: #6366f1;
+    --brand-2: #8b5cf6;
+    --green: #22c55e;
+    --red: #ef4444;
+    --orange: #f97316;
+    --amber: #f59e0b;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    --shadow-lift: 0 12px 32px rgba(0,0,0,.35);
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  .icon {
+    width: 1em; height: 1em; flex: none;
+    stroke: currentColor; fill: none;
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    vertical-align: -0.125em;
+  }
   body {
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    background: #0f172a;
-    color: #e2e8f0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background:
+      radial-gradient(1200px 600px at 85% -10%, rgba(99,102,241,.12), transparent 60%),
+      radial-gradient(900px 500px at 0% 0%, rgba(139,92,246,.10), transparent 55%),
+      var(--bg);
+    color: var(--text);
     min-height: 100vh;
-    padding: 24px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
-  .header {
-    background: linear-gradient(135deg, #4f46e5, #7c3aed);
-    padding: 24px 32px;
-    border-radius: 16px;
-    margin-bottom: 24px;
-    box-shadow: 0 10px 30px rgba(79, 70, 229, 0.3);
+  .wrap { max-width: 1440px; margin: 0 auto; padding: 20px clamp(16px, 3vw, 32px) 48px; }
+
+  /* ---------- Header ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+    padding: 14px clamp(16px, 3vw, 32px);
+    background: rgba(11,17,32,.72);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
   }
-  .header h1 { font-size: 28px; margin-bottom: 8px; }
-  .header p { opacity: 0.9; font-size: 14px; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .logo {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--brand), var(--brand-2));
+    box-shadow: 0 8px 20px rgba(99,102,241,.4);
+    color: #fff; font-size: 24px;
+  }
+  .brand-text h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+  .brand-text p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .topbar-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .live-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 14px; border-radius: 999px;
+    background: rgba(34,197,94,.12);
+    border: 1px solid rgba(34,197,94,.35);
+    color: #86efac; font-size: 12px; font-weight: 600;
+  }
+  .live-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 0 0 rgba(34,197,94,.7);
+    animation: ping 1.8s cubic-bezier(0,0,.2,1) infinite;
+  }
+  @keyframes ping {
+    0% { box-shadow: 0 0 0 0 rgba(34,197,94,.55); }
+    70% { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+    100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+  }
+  .clock {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12px; color: var(--text-muted);
+    padding: 7px 14px; border-radius: 999px;
+    background: var(--bg-elev); border: 1px solid var(--border);
+  }
+  .clock strong { color: var(--text); font-weight: 600; }
+
+  /* ---------- Alert banner ---------- */
+  .alert-banner {
+    margin-top: 20px;
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(90deg, rgba(220,38,38,.18), rgba(234,88,12,.12));
+    border: 1px solid rgba(239,68,68,.4);
+    color: #fecaca;
+  }
+  .alert-banner .alert-icon {
+    font-size: 20px; width: 40px; height: 40px; flex: none;
+    display: grid; place-items: center; border-radius: 10px;
+    background: rgba(239,68,68,.18);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+  .alert-banner strong { color: #fff; }
+
+  /* ---------- KPI ---------- */
+  .section-title {
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--text-dim);
+    margin: 28px 0 14px;
+  }
   .kpi-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 16px;
-    margin-bottom: 24px;
   }
   .kpi {
-    background: #1e293b;
-    padding: 20px;
-    border-radius: 12px;
-    border-left: 4px solid #4f46e5;
+    position: relative; overflow: hidden;
+    background: var(--bg-elev);
+    padding: 18px 20px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-soft);
+    box-shadow: var(--shadow);
+    transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
   }
-  .kpi-label { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
-  .kpi-value { font-size: 32px; font-weight: 700; margin-top: 8px; color: #fff; }
-  .kpi-trend { font-size: 12px; margin-top: 4px; }
-  .kpi-trend.up { color: #10b981; }
-  .kpi-trend.down { color: #ef4444; }
+  .kpi:hover { transform: translateY(-3px); border-color: var(--border); box-shadow: var(--shadow-lift); }
+  .kpi::after {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--accent, var(--brand));
+  }
+  .kpi-top { display: flex; align-items: center; justify-content: space-between; }
+  .kpi-icon {
+    width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
+    font-size: 18px; background: color-mix(in srgb, var(--accent, var(--brand)) 16%, transparent);
+  }
+  .kpi-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; }
+  .kpi-value { font-size: 30px; font-weight: 800; margin-top: 10px; color: #fff; letter-spacing: -0.02em; }
+  .kpi-trend { font-size: 12px; margin-top: 6px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+  .kpi-trend.up { color: #4ade80; }
+  .kpi-trend.down { color: #f87171; }
+
+  /* ---------- Panels ---------- */
   .grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 24px;
+    gap: 20px;
   }
   .panel {
-    background: #1e293b;
-    border-radius: 12px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
     padding: 20px;
-    min-height: 380px;
+    box-shadow: var(--shadow);
+    transition: border-color .18s ease;
   }
-  .panel h3 { margin-bottom: 16px; font-size: 16px; color: #cbd5e1; }
-  .alert-banner {
-    background: linear-gradient(90deg, #dc2626, #ea580c);
-    color: white;
-    padding: 12px 20px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    animation: pulse 2s infinite;
+  .panel:hover { border-color: var(--border); }
+  .panel-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px; padding-bottom: 14px;
+    border-bottom: 1px solid var(--border-soft);
   }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+  .panel-head .ico {
+    font-size: 16px; color: var(--brand);
+    display: grid; place-items: center;
+    width: 30px; height: 30px; border-radius: 8px;
+    background: color-mix(in srgb, var(--brand) 14%, transparent);
   }
-  .alert-icon { font-size: 24px; }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 12px;
+  .panel-head h3 { font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+  .panel-head .tag {
+    margin-left: auto; font-size: 11px; color: var(--text-dim);
+    padding: 3px 9px; border-radius: 999px; background: var(--bg-elev-2);
+    border: 1px solid var(--border-soft);
   }
-  th, td {
-    padding: 10px 12px;
-    text-align: left;
-    border-bottom: 1px solid #334155;
-    font-size: 13px;
+  .chart { height: 300px; }
+  .span-2 { grid-column: span 2; }
+
+  /* ---------- Table ---------- */
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 560px; }
+  thead th {
+    color: var(--text-muted); text-transform: uppercase; font-size: 10.5px;
+    letter-spacing: .07em; font-weight: 600;
+    padding: 10px 14px; text-align: left;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--bg-elev);
   }
-  th { color: #94a3b8; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+  tbody td { padding: 13px 14px; font-size: 13px; border-bottom: 1px solid var(--border-soft); }
+  tbody tr { transition: background .15s ease; }
+  tbody tr:hover { background: var(--bg-elev-2); }
+  tbody tr:last-child td { border-bottom: none; }
+  .svc { font-weight: 600; color: #fff; }
+  .num { font-variant-numeric: tabular-nums; }
+  .sent-neg { color: #f87171; font-weight: 600; }
+  .sent-pos { color: #4ade80; font-weight: 600; }
   .status-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 11px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; letter-spacing: .02em;
   }
-  .status-CRISE { background: #dc2626; color: white; }
-  .status-ATTENTION { background: #ea580c; color: white; }
-  .status-NORMAL { background: #10b981; color: white; }
+  .status-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .status-CRISE { background: rgba(220,38,38,.16); color: #f87171; border: 1px solid rgba(248,113,113,.35); }
+  .status-ATTENTION { background: rgba(234,88,12,.16); color: #fb923c; border: 1px solid rgba(251,146,60,.35); }
+  .status-NORMAL { background: rgba(34,197,94,.16); color: #4ade80; border: 1px solid rgba(74,222,128,.35); }
+
+  /* ---------- Footer ---------- */
   .footer {
-    margin-top: 32px;
-    text-align: center;
-    font-size: 12px;
-    color: #64748b;
+    margin-top: 36px; padding-top: 20px;
+    border-top: 1px solid var(--border-soft);
+    text-align: center; font-size: 12px; color: var(--text-dim); line-height: 1.7;
   }
+  .footer .badge-sim {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: 999px;
+    background: var(--bg-elev); border: 1px solid var(--border-soft); color: var(--text-muted);
+  }
+
   @media (max-width: 900px) {
     .grid { grid-template-columns: 1fr; }
+    .span-2 { grid-column: span 1; }
+    .brand-text p { display: none; }
   }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>📊 Vox-SN — Dashboard Temps Réel</h1>
-  <p>Écoute citoyenne · Services publics & Fintech Sénégal · UADB M2 BD&IA 2025-2026</p>
-</div>
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    </div>
+    <div class="brand-text">
+      <h1>Vox-SN — Dashboard Temps Réel</h1>
+      <p>Écoute citoyenne · Services publics &amp; Fintech Sénégal · UADB M2 BD&amp;IA 2025-2026</p>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="live-pill"><span class="live-dot"></span> EN DIRECT</span>
+    <span class="clock">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" style="opacity:.7"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+      Maj : <strong id="lastUpdate">—</strong>
+    </span>
+  </div>
+</header>
 
-<div class="alert-banner" id="alertBanner" style="display:none;">
-  <span class="alert-icon">🚨</span>
-  <div>
-    <strong>ALERTE CRISE</strong> — <span id="alertText">Wave : sentiment moyen -0.67 sur la dernière heure</span>
-  </div>
-</div>
+<div class="wrap">
 
-<div class="kpi-row">
-  <div class="kpi">
-    <div class="kpi-label">Posts ingérés (24h)</div>
-    <div class="kpi-value" id="kpiPosts">12,847</div>
-    <div class="kpi-trend up">▲ +18% vs hier</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">Sentiment moyen</div>
-    <div class="kpi-value" id="kpiSentiment">-0.12</div>
-    <div class="kpi-trend down">▼ -0.08 vs hier</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">Crises actives</div>
-    <div class="kpi-value" id="kpiCrises" style="color:#ef4444;">2</div>
-    <div class="kpi-trend">WAVE, SENELEC</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">PII détectés (rejetés)</div>
-    <div class="kpi-value" id="kpiPII">347</div>
-    <div class="kpi-trend">100% bloqués</div>
-  </div>
-</div>
-
-<div class="grid">
-  <div class="panel">
-    <h3>⚔️ Battle Mobile Money — Sentiment 7 jours</h3>
-    <div id="chartBattle" style="height: 300px;"></div>
+  <div class="alert-banner" id="alertBanner" style="display:none;">
+    <span class="alert-icon">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+    </span>
+    <div>
+      <strong>ALERTE CRISE</strong> — <span id="alertText">Wave : sentiment moyen -0.67 sur la dernière heure</span>
+    </div>
   </div>
 
-  <div class="panel">
-    <h3>📈 Évolution sentiment (24h)</h3>
-    <div id="chartTimeline" style="height: 300px;"></div>
+  <div class="section-title">Indicateurs clés · dernières 24 h</div>
+  <div class="kpi-row">
+    <div class="kpi" style="--accent: var(--brand);">
+      <div class="kpi-top">
+        <div class="kpi-label">Posts ingérés (24h)</div>
+        <div class="kpi-icon">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+        </div>
+      </div>
+      <div class="kpi-value" id="kpiPosts">12,847</div>
+      <div class="kpi-trend up">▲ +18% vs hier</div>
+    </div>
+    <div class="kpi" style="--accent: var(--amber);">
+      <div class="kpi-top">
+        <div class="kpi-label">Sentiment moyen</div>
+        <div class="kpi-icon">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+      </div>
+      <div class="kpi-value" id="kpiSentiment">-0.12</div>
+      <div class="kpi-trend down">▼ -0.08 vs hier</div>
+    </div>
+    <div class="kpi" style="--accent: var(--red);">
+      <div class="kpi-top">
+        <div class="kpi-label">Crises actives</div>
+        <div class="kpi-icon">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+        </div>
+      </div>
+      <div class="kpi-value" id="kpiCrises" style="color:#f87171;">2</div>
+      <div class="kpi-trend">WAVE · SENELEC</div>
+    </div>
+    <div class="kpi" style="--accent: var(--green);">
+      <div class="kpi-top">
+        <div class="kpi-label">PII détectés (rejetés)</div>
+        <div class="kpi-icon">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+        </div>
+      </div>
+      <div class="kpi-value" id="kpiPII">347</div>
+      <div class="kpi-trend up">100% bloqués</div>
+    </div>
   </div>
 
-  <div class="panel">
-    <h3>🏷️ Distribution des catégories</h3>
-    <div id="chartCategories" style="height: 300px;"></div>
+  <div class="section-title">Analyses détaillées</div>
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="ico"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg></span>
+        <h3>Battle Mobile Money — Sentiment</h3>
+        <span class="tag">7 jours</span>
+      </div>
+      <div id="chartBattle" class="chart"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <span class="ico"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>
+        <h3>Évolution du sentiment</h3>
+        <span class="tag">24 h</span>
+      </div>
+      <div id="chartTimeline" class="chart"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <span class="ico"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg></span>
+        <h3>Distribution des catégories</h3>
+        <span class="tag">part %</span>
+      </div>
+      <div id="chartCategories" class="chart"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <span class="ico"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></span>
+        <h3>Parts de voix par service</h3>
+        <span class="tag">part %</span>
+      </div>
+      <div id="chartParts" class="chart"></div>
+    </div>
+
+    <div class="panel span-2">
+      <div class="panel-head">
+        <span class="ico"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
+        <h3>Alertes actives</h3>
+        <span class="tag" id="alertsCount">4 services suivis</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Service</th>
+              <th>Catégorie</th>
+              <th>Sentiment</th>
+              <th>Nb posts</th>
+              <th>Début</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody id="alertsTable">
+            <tr>
+              <td><span class="svc">WAVE</span></td>
+              <td>TECHNIQUE</td>
+              <td class="num sent-neg">-0.67</td>
+              <td class="num">43</td>
+              <td>il y a 1h22</td>
+              <td><span class="status-badge status-CRISE">CRISE</span></td>
+            </tr>
+            <tr>
+              <td><span class="svc">SENELEC</span></td>
+              <td>TECHNIQUE</td>
+              <td class="num sent-neg">-0.58</td>
+              <td class="num">28</td>
+              <td>il y a 38 min</td>
+              <td><span class="status-badge status-CRISE">CRISE</span></td>
+            </tr>
+            <tr>
+              <td><span class="svc">ORANGE_MONEY</span></td>
+              <td>TARIF</td>
+              <td class="num sent-neg">-0.34</td>
+              <td class="num">19</td>
+              <td>il y a 2h</td>
+              <td><span class="status-badge status-ATTENTION">ATTENTION</span></td>
+            </tr>
+            <tr>
+              <td><span class="svc">TER</span></td>
+              <td>SERVICE_CLIENT</td>
+              <td class="num sent-pos">+0.12</td>
+              <td class="num">12</td>
+              <td>—</td>
+              <td><span class="status-badge status-NORMAL">NORMAL</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
-  <div class="panel">
-    <h3>🌍 Parts de voix par service</h3>
-    <div id="chartParts" style="height: 300px;"></div>
+  <div class="footer">
+    <span class="badge-sim"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Données simulées</span><br>
+    Vox-SN © 2025-2026 · Encadrant : Mr Ahmed Ben Sidy Bouya SEYE (Sonatel)
   </div>
 
-  <div class="panel" style="grid-column: span 2;">
-    <h3>🔥 Alertes actives</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Service</th>
-          <th>Catégorie</th>
-          <th>Sentiment</th>
-          <th>Nb posts</th>
-          <th>Début</th>
-          <th>Statut</th>
-        </tr>
-      </thead>
-      <tbody id="alertsTable">
-        <tr>
-          <td><strong>WAVE</strong></td>
-          <td>TECHNIQUE</td>
-          <td>-0.67</td>
-          <td>43</td>
-          <td>il y a 1h22</td>
-          <td><span class="status-badge status-CRISE">CRISE</span></td>
-        </tr>
-        <tr>
-          <td><strong>SENELEC</strong></td>
-          <td>TECHNIQUE</td>
-          <td>-0.58</td>
-          <td>28</td>
-          <td>il y a 38 min</td>
-          <td><span class="status-badge status-CRISE">CRISE</span></td>
-        </tr>
-        <tr>
-          <td><strong>ORANGE_MONEY</strong></td>
-          <td>TARIF</td>
-          <td>-0.34</td>
-          <td>19</td>
-          <td>il y a 2h</td>
-          <td><span class="status-badge status-ATTENTION">ATTENTION</span></td>
-        </tr>
-        <tr>
-          <td><strong>TER</strong></td>
-          <td>SERVICE_CLIENT</td>
-          <td>+0.12</td>
-          <td>12</td>
-          <td>—</td>
-          <td><span class="status-badge status-NORMAL">NORMAL</span></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<div class="footer">
-  ⚙️ Données simulées · Mise à jour : <span id="lastUpdate"></span> · 
-  Vox-SN © 2025-2026 · Encadrant : Mr Ahmed Ben Sidy Bouya SEYE (Sonatel)
 </div>
 
 <script>
 // Couleurs unifiées
 const C = {
-  bg: '#1e293b', grid: '#334155', text: '#e2e8f0',
+  bg: '#131c31', grid: '#243049', text: '#e8edf6',
   wave: '#06b6d4', om: '#f97316', free: '#a855f7',
-  senelec: '#facc15', eau: '#3b82f6', ter: '#10b981',
-  red: '#ef4444', green: '#10b981', orange: '#f97316'
+  senelec: '#facc15', eau: '#3b82f6', ter: '#22c55e',
+  red: '#ef4444', green: '#22c55e', orange: '#f97316'
 };
 
 const layoutBase = {
   paper_bgcolor: 'rgba(0,0,0,0)',
   plot_bgcolor: 'rgba(0,0,0,0)',
-  font: { color: C.text, size: 11 },
-  margin: { t: 20, r: 20, b: 50, l: 50 },
-  xaxis: { gridcolor: C.grid, color: C.text },
-  yaxis: { gridcolor: C.grid, color: C.text }
+  font: { color: C.text, size: 11, family: 'Inter, system-ui, sans-serif' },
+  margin: { t: 16, r: 20, b: 50, l: 50 },
+  xaxis: { gridcolor: C.grid, color: C.text, zerolinecolor: C.grid },
+  yaxis: { gridcolor: C.grid, color: C.text, zerolinecolor: C.grid },
+  hoverlabel: { bgcolor: C.bg, bordercolor: C.grid, font: { color: C.text } }
 };
+const config = { responsive: true, displayModeBar: false };
 
 // 1. Battle Mobile Money
 Plotly.newPlot('chartBattle', [{
   type: 'bar',
   x: ['Wave', 'Orange Money', 'Free Money'],
   y: [-0.42, -0.18, -0.31],
-  marker: { color: [C.red, C.orange, C.red] },
+  marker: { color: [C.red, C.orange, C.red], line: { width: 0 } },
   text: ['-0.42', '-0.18', '-0.31'],
-  textposition: 'outside'
+  textposition: 'outside',
+  hovertemplate: '%{x}<br>Sentiment : %{y}<extra></extra>'
 }], {
   ...layoutBase,
   yaxis: { ...layoutBase.yaxis, title: 'Sentiment moyen', range: [-0.7, 0.2] },
@@ -248,7 +447,7 @@ Plotly.newPlot('chartBattle', [{
     type: 'line', x0: -0.5, x1: 2.5, y0: -0.5, y1: -0.5,
     line: { color: C.red, width: 2, dash: 'dash' }
   }]
-}, { responsive: true, displayModeBar: false });
+}, config);
 
 // 2. Timeline 24h
 const hours = Array.from({length: 24}, (_, i) => `${String(i).padStart(2,'0')}h`);
@@ -260,9 +459,9 @@ const sentSEN   = [0,0,0.05,0,0.1,0.05,-0.1,-0.3,-0.45,-0.5,-0.55,-0.58,
                    -0.5,-0.4,-0.3,-0.2,-0.15,-0.1,-0.05,0,0.05,0,-0.05,-0.1];
 
 Plotly.newPlot('chartTimeline', [
-  { x: hours, y: sentWave, name: 'Wave', line: { color: C.wave, width: 2 }, mode: 'lines' },
-  { x: hours, y: sentOM, name: 'Orange Money', line: { color: C.om, width: 2 }, mode: 'lines' },
-  { x: hours, y: sentSEN, name: 'Senelec', line: { color: C.senelec, width: 2 }, mode: 'lines' },
+  { x: hours, y: sentWave, name: 'Wave', line: { color: C.wave, width: 2.5, shape: 'spline' }, mode: 'lines' },
+  { x: hours, y: sentOM, name: 'Orange Money', line: { color: C.om, width: 2.5, shape: 'spline' }, mode: 'lines' },
+  { x: hours, y: sentSEN, name: 'Senelec', line: { color: C.senelec, width: 2.5, shape: 'spline' }, mode: 'lines' },
 ], {
   ...layoutBase,
   yaxis: { ...layoutBase.yaxis, title: 'Sentiment' },
@@ -271,19 +470,22 @@ Plotly.newPlot('chartTimeline', [
     type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: -1, y1: -0.5,
     fillcolor: C.red, opacity: 0.08, line: { width: 0 }
   }]
-}, { responsive: true, displayModeBar: false });
+}, config);
 
 // 3. Catégories
 Plotly.newPlot('chartCategories', [{
   type: 'pie',
   labels: ['TECHNIQUE', 'TARIF', 'FRAUDE', 'SERVICE_CLIENT', 'POSITIF', 'AUTRE'],
   values: [38, 22, 12, 14, 9, 5],
-  marker: { colors: [C.red, C.orange, '#dc2626', '#8b5cf6', C.green, '#64748b'] },
-  textfont: { color: '#fff' }
+  hole: 0.5,
+  marker: { colors: [C.red, C.orange, '#dc2626', '#8b5cf6', C.green, '#64748b'], line: { color: C.bg, width: 2 } },
+  textfont: { color: '#fff' },
+  hovertemplate: '%{label}<br>%{value}%<extra></extra>'
 }], {
   ...layoutBase,
-  margin: { t: 20, r: 20, b: 20, l: 20 }
-}, { responsive: true, displayModeBar: false });
+  margin: { t: 16, r: 16, b: 16, l: 16 },
+  legend: { orientation: 'h', y: -0.05, font: { size: 10 } }
+}, config);
 
 // 4. Parts de voix
 Plotly.newPlot('chartParts', [{
@@ -291,20 +493,26 @@ Plotly.newPlot('chartParts', [{
   orientation: 'h',
   x: [28, 22, 11, 18, 12, 9],
   y: ['Wave', 'Orange Money', 'Free Money', 'Senelec', 'Sen Eau', 'TER'],
-  marker: { color: [C.wave, C.om, C.free, C.senelec, C.eau, C.ter] },
+  marker: { color: [C.wave, C.om, C.free, C.senelec, C.eau, C.ter], line: { width: 0 } },
   text: ['28%', '22%', '11%', '18%', '12%', '9%'],
-  textposition: 'outside'
+  textposition: 'outside',
+  hovertemplate: '%{y} : %{x}%<extra></extra>'
 }], {
   ...layoutBase,
-  xaxis: { ...layoutBase.xaxis, title: 'Part de voix (%)', range: [0, 35] }
-}, { responsive: true, displayModeBar: false });
+  xaxis: { ...layoutBase.xaxis, title: 'Part de voix (%)', range: [0, 35] },
+  yaxis: { ...layoutBase.yaxis, autorange: 'reversed' }
+}, config);
 
 // Bannière d'alerte
 document.getElementById('alertBanner').style.display = 'flex';
 
 // Heure de mise à jour
-document.getElementById('lastUpdate').textContent =
-  new Date().toLocaleString('fr-FR');
+function refreshClock() {
+  document.getElementById('lastUpdate').textContent =
+    new Date().toLocaleTimeString('fr-FR');
+}
+refreshClock();
+setInterval(refreshClock, 1000);
 </script>
 
 </body>

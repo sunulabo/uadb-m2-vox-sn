@@ -101,7 +101,10 @@ services:
   # 5. SPARK MASTER — NLP Pipeline
   # ============================================================================
   spark-master:
-    image: apache/spark:3.5.0
+    build:
+      context: .
+      dockerfile: docker/spark.Dockerfile
+    image: vox-sn/spark:3.5.0
     container_name: vox_spark_master
     user: root
     restart: unless-stopped
@@ -109,6 +112,7 @@ services:
     environment:
       SPARK_NO_DAEMONIZE: "true"
       CITIZEN_SECRET_SALT: ${CITIZEN_SECRET_SALT:-UADB_VOX_2025}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
       PYSPARK_PYTHON: python3
     ports:
       - "8080:8080"
@@ -123,7 +127,10 @@ services:
   # 6. SPARK WORKER
   # ============================================================================
   spark-worker:
-    image: apache/spark:3.5.0
+    build:
+      context: .
+      dockerfile: docker/spark.Dockerfile
+    image: vox-sn/spark:3.5.0
     container_name: vox_spark_worker
     user: root
     restart: unless-stopped
@@ -246,6 +253,8 @@ services:
       --port 5000
       --backend-store-uri sqlite:///mlflow/mlflow.db
       --default-artifact-root /mlflow/artifacts
+      --serve-artifacts
+      --artifacts-destination /mlflow/artifacts
     networks: [vox_sn_net]
 
 # ------------------------------------------------------------------------------

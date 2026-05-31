@@ -81,7 +81,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--mlflow-uri",
-        default=os.environ.get("MLFLOW_TRACKING_URI", ""),
+        default=os.environ.get("MLFLOW_TRACKING_URI", "http://mlflow:5000"),
         help="URI MLflow (vide = pas de tracking).",
     )
     parser.add_argument(
@@ -95,6 +95,11 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=100,
         help="Nombre d'arbres Random Forest.",
+    )
+    parser.add_argument(
+        "--csv-path",
+        default="/opt/data/samples/training_data.csv",
+        help="Fallback CSV si Hive est vide ou inaccessible.",
     )
     return parser.parse_args()
 
@@ -154,6 +159,9 @@ def build_category_pipeline(num_features: int, num_trees: int) -> Pipeline:
 # =============================================================================
 def main() -> None:
     args = parse_args()
+    metastore_uri = os.environ.get(
+        "HIVE_METASTORE_URI", "thrift://hive-metastore:9083"
+    )
 
     # ─── SparkSession avec Hive ──────────────────────────────────────────────
     spark = (
@@ -161,11 +169,13 @@ def main() -> None:
         .appName("VoxSN_TrainClassifier")
         .enableHiveSupport()
         .config("spark.sql.shuffle.partitions", "4")
+        .config("spark.hadoop.hive.metastore.uris", metastore_uri)
+        .config("spark.sql.catalogImplementation", "hive")
         .getOrCreate()
     )
     spark.sparkContext.setLogLevel("WARN")
 
-    # ─── Chargement des données depuis Hive ──────────────────────────────────
+    # ─── Chargement des données (Hive, fallback CSV) ─────────────────────────
     sql = f"""
         SELECT texte_clean,
                sentiment_label,
@@ -178,11 +188,41 @@ def main() -> None:
           AND categorie IS NOT NULL
     """
     logger.info("Chargement données — fenêtre %d jours", args.window_days)
-    df = spark.sql(sql).na.drop()
+    df = None
+    try:
+        df = spark.sql(sql).na.drop()
+        total = df.count()
+        logger.info("Lignes Hive utilisables : %d", total)
+        if total < 100:
+            df = None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Lecture Hive impossible : %s", exc)
+
+    if df is None:
+        if not os.path.exists(args.csv_path):
+            logger.error(
+                "Données insuffisantes. Lancez : "
+                "make hive-init && make hive-load-training "
+                "ou : python scripts/seed_training_data.py"
+            )
+            spark.stop()
+            return
+        logger.info("Fallback CSV : %s", args.csv_path)
+        df = (
+            spark.read.option("header", True).csv(args.csv_path)
+            .select("texte_clean", "sentiment_label", "categorie")
+            .na.drop()
+            .filter("LENGTH(texte_clean) > 0")
+        )
+
     total = df.count()
     logger.info("Lignes utilisables : %d", total)
     if total < 100:
-        logger.error("Trop peu de données pour entraîner (min 100).")
+        logger.error(
+            "Trop peu de données pour entraîner (min 100, trouvé %d). "
+            "Lancez : make hive-init && make hive-load-training",
+            total,
+        )
         spark.stop()
         return
 

@@ -6,8 +6,8 @@
 
 .PHONY: help setup up down restart logs ps clean \
         produce stream consume \
-        hbase-init hive-init kafka-topics airflow-init \
-        train report dashboard \
+        hbase-init hbase-seed hive-init hive-load-training kafka-topics airflow-init \
+        spark-deps train report dashboard \
         test test-schema test-lexique test-udf test-kafka \
         format lint zip
 
@@ -81,13 +81,22 @@ hbase-seed: ## Charge des posts anonymisés de démo dans vox:posts
 	@HBASE_HOST=localhost $(PYTHON) hbase/seed_demo_posts.py --rows 20
 
 hive-init: ## Crée les tables et vues Hive
-	$(COMPOSE) up -d hive-server
+	$(COMPOSE) up -d hive-metastore hive-server
 	@echo "Attente du démarrage HiveServer2 (60s)..."
 	@sleep 60
 	docker cp hive/hive_setup.sql vox_hive_server:/tmp/hive_setup.sql
 	@HIVE_CID=$$(docker inspect -f '{{.Id}}' vox_hive_server | cut -c1-12); \
 	docker exec vox_hive_server beeline -u "jdbc:hive2://$$HIVE_CID:10000/" \
 		-f /tmp/hive_setup.sql
+
+hive-load-training: ## Génère et charge 2000 posts labellisés dans posts_analyses
+	@test -f $(VENV)/bin/python || (echo "Erreur: venv absent — lancez ./setup.sh" && exit 1)
+	$(PYTHON) scripts/seed_training_data.py --rows 2000
+	docker cp data/samples/training_data.csv vox_hive_server:/tmp/training_data.csv
+	docker cp hive/load_training.sql vox_hive_server:/tmp/load_training.sql
+	@HIVE_CID=$$(docker inspect -f '{{.Id}}' vox_hive_server | cut -c1-12); \
+	docker exec vox_hive_server beeline -u "jdbc:hive2://$$HIVE_CID:10000/" \
+		-f /tmp/load_training.sql
 
 airflow-init: ## Active le DAG Airflow vox_sn_monitoring
 	docker exec vox_airflow airflow dags reserialize
@@ -126,10 +135,16 @@ inject-crisis: ## Injecte 50 posts négatifs WAVE pour déclencher l'alerte CRIS
 # -----------------------------------------------------------------------------
 # Machine Learning
 # -----------------------------------------------------------------------------
-train: ## Entraîne les modèles Logistic Regression + Random Forest
+spark-deps: ## Installe numpy + mlflow dans les conteneurs Spark
+	@docker exec vox_spark_master pip3 install -q numpy==1.24.4 mlflow==2.8.1 2>/dev/null || true
+	@docker exec vox_spark_worker pip3 install -q numpy==1.24.4 2>/dev/null || true
+
+train: spark-deps ## Entraîne les modèles Logistic Regression + Random Forest
+	@test -f data/samples/training_data.csv || $(PYTHON) scripts/seed_training_data.py --rows 2000
 	$(SPARK_SUBMIT) /opt/spark-apps/train_classifier.py \
 		--output-path /opt/models/classifier_latest \
-		--window-days 30
+		--window-days 30 \
+		--mlflow-uri http://mlflow:5000
 
 report: ## Génère le rapport de crise PNG
 	$(PYTHON) dashboards/rapport_crise.py
