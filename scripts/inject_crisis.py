@@ -210,6 +210,9 @@ def inject(broker: str, service: str, count: int, rate: float) -> None:
     logger.info('  • Dashboard battle_mm.html')
 
 
+INTENSITY_COUNTS = {'LOW': 20, 'MEDIUM': 50, 'HIGH': 100}
+
+
 def main() -> None:
     """CLI principale."""
     parser = argparse.ArgumentParser(
@@ -217,18 +220,28 @@ def main() -> None:
     parser.add_argument('--service', default='WAVE',
                         choices=list(POSTS_CRISE.keys()),
                         help='Service ciblé par la crise (défaut: WAVE)')
-    parser.add_argument('--count', type=int, default=50,
-                        help='Nombre de posts à injecter (défaut: 50)')
-    parser.add_argument('--broker', default='kafka:9092',
-                        help='Broker Kafka (défaut: kafka:9092)')
+    parser.add_argument('--count', type=int, default=None,
+                        help='Nombre de posts à injecter (prioritaire sur --intensity)')
+    parser.add_argument('--intensity', default=None,
+                        choices=['LOW', 'MEDIUM', 'HIGH'],
+                        help='Volume d\'injection : LOW=20, MEDIUM=50, HIGH=100')
+    parser.add_argument('--broker', default='localhost:9093',
+                        help='Broker Kafka (défaut: localhost:9093 depuis le Mac)')
     parser.add_argument('--rate', type=float, default=0.1,
                         help='Pause entre 2 messages en sec (défaut: 0.1)')
     args = parser.parse_args()
 
+    if args.count is not None:
+        count = args.count
+    elif args.intensity:
+        count = INTENSITY_COUNTS[args.intensity]
+    else:
+        count = INTENSITY_COUNTS['MEDIUM']
+
     signal.signal(signal.SIGINT, _handle_sigint)
     signal.signal(signal.SIGTERM, _handle_sigint)
 
-    inject(args.broker, args.service, args.count, args.rate)
+    inject(args.broker, args.service, count, args.rate)
 
 
 if __name__ == '__main__':

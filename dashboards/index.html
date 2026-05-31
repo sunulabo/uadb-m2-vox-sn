@@ -365,40 +365,7 @@
               <th>Statut</th>
             </tr>
           </thead>
-          <tbody id="alertsTable">
-            <tr>
-              <td><span class="svc">WAVE</span></td>
-              <td>TECHNIQUE</td>
-              <td class="num sent-neg">-0.67</td>
-              <td class="num">43</td>
-              <td>il y a 1h22</td>
-              <td><span class="status-badge status-CRISE">CRISE</span></td>
-            </tr>
-            <tr>
-              <td><span class="svc">SENELEC</span></td>
-              <td>TECHNIQUE</td>
-              <td class="num sent-neg">-0.58</td>
-              <td class="num">28</td>
-              <td>il y a 38 min</td>
-              <td><span class="status-badge status-CRISE">CRISE</span></td>
-            </tr>
-            <tr>
-              <td><span class="svc">ORANGE_MONEY</span></td>
-              <td>TARIF</td>
-              <td class="num sent-neg">-0.34</td>
-              <td class="num">19</td>
-              <td>il y a 2h</td>
-              <td><span class="status-badge status-ATTENTION">ATTENTION</span></td>
-            </tr>
-            <tr>
-              <td><span class="svc">TER</span></td>
-              <td>SERVICE_CLIENT</td>
-              <td class="num sent-pos">+0.12</td>
-              <td class="num">12</td>
-              <td>—</td>
-              <td><span class="status-badge status-NORMAL">NORMAL</span></td>
-            </tr>
-          </tbody>
+          <tbody id="alertsTable"></tbody>
         </table>
       </div>
     </div>
@@ -412,13 +379,68 @@
 </div>
 
 <script>
-// Couleurs unifiées
 const C = {
   bg: '#131c31', grid: '#243049', text: '#e8edf6',
   wave: '#06b6d4', om: '#f97316', free: '#a855f7',
   senelec: '#facc15', eau: '#3b82f6', ter: '#22c55e',
   red: '#ef4444', green: '#22c55e', orange: '#f97316'
 };
+
+const hours = Array.from({length: 24}, (_, i) => `${String(i).padStart(2,'0')}h`);
+
+const SCENARIOS = {
+  normal: {
+    alertBanner: false,
+    alertText: '',
+    kpiPosts: '12,847',
+    kpiSentiment: '+0.08',
+    kpiSentimentTrend: '▲ +0.03 vs hier',
+    kpiSentimentTrendClass: 'up',
+    kpiCrises: '0',
+    kpiCrisesColor: '#4ade80',
+    kpiCrisesTrend: 'Aucune alerte active',
+    sentWave: [-0.1,-0.12,-0.08,-0.05,0.05,0.08,-0.05,-0.08,-0.1,-0.12,-0.15,-0.18,
+               -0.15,-0.12,-0.1,-0.08,-0.05,0,0.02,-0.02,-0.05,-0.08,-0.1,-0.12],
+    sentOM: [-0.05,-0.08,-0.1,-0.05,0,0.02,-0.05,-0.08,-0.12,-0.15,-0.18,-0.2,
+             -0.18,-0.15,-0.12,-0.1,-0.08,-0.05,0,0.05,-0.02,-0.05,-0.08,-0.1],
+    sentSEN: [0.08,0.1,0.12,0.14,0.15,0.12,0.1,0.11,0.13,0.14,0.12,0.15,
+              0.13,0.14,0.12,0.11,0.1,0.12,0.14,0.13,0.12,0.11,0.1,0.12],
+    timelineCrisisZone: false,
+    alerts: [
+      { service: 'WAVE', cat: 'TECHNIQUE', sentiment: -0.18, posts: 31, since: 'il y a 3h', status: 'ATTENTION' },
+      { service: 'SENELEC', cat: 'SERVICE_CLIENT', sentiment: 0.14, posts: 9, since: '—', status: 'NORMAL' },
+      { service: 'ORANGE_MONEY', cat: 'TARIF', sentiment: -0.12, posts: 14, since: 'il y a 4h', status: 'ATTENTION' },
+      { service: 'TER', cat: 'SERVICE_CLIENT', sentiment: 0.12, posts: 12, since: '—', status: 'NORMAL' },
+    ],
+  },
+  crisis: {
+    alertBanner: true,
+    alertText: 'SENELEC : sentiment moyen -0.72 sur la dernière heure',
+    kpiPosts: '13,204',
+    kpiSentiment: '-0.24',
+    kpiSentimentTrend: '▼ -0.32 vs hier',
+    kpiSentimentTrendClass: 'down',
+    kpiCrises: '2',
+    kpiCrisesColor: '#f87171',
+    kpiCrisesTrend: 'WAVE · SENELEC',
+    sentWave: [-0.1,-0.15,-0.12,-0.08,0.1,0.05,-0.1,-0.2,-0.35,-0.55,-0.62,-0.67,
+               -0.6,-0.5,-0.45,-0.3,-0.25,-0.2,-0.15,-0.1,-0.05,0,0.05,-0.05],
+    sentOM: [-0.05,-0.08,-0.1,-0.05,0,0.02,-0.05,-0.08,-0.12,-0.15,-0.18,-0.2,
+             -0.18,-0.15,-0.12,-0.1,-0.08,-0.05,0,0.05,-0.02,-0.05,-0.08,-0.1],
+    sentSEN: [0.1,0.12,0.11,0.1,0.08,0.05,0,-0.05,-0.15,-0.35,-0.52,-0.65,
+              -0.72,-0.68,-0.6,-0.5,-0.4,-0.3,-0.2,-0.1,0,0.05,0,-0.05],
+    timelineCrisisZone: true,
+    alerts: [
+      { service: 'WAVE', cat: 'TECHNIQUE', sentiment: -0.67, posts: 43, since: 'il y a 1h22', status: 'CRISE' },
+      { service: 'SENELEC', cat: 'TECHNIQUE', sentiment: -0.72, posts: 87, since: 'il y a 12 min', status: 'CRISE' },
+      { service: 'ORANGE_MONEY', cat: 'TARIF', sentiment: -0.34, posts: 19, since: 'il y a 2h', status: 'ATTENTION' },
+      { service: 'TER', cat: 'SERVICE_CLIENT', sentiment: 0.12, posts: 12, since: '—', status: 'NORMAL' },
+    ],
+  },
+};
+
+const mode = new URLSearchParams(window.location.search).get('mode') === 'normal' ? 'normal' : 'crisis';
+const scenario = SCENARIOS[mode];
 
 const layoutBase = {
   paper_bgcolor: 'rgba(0,0,0,0)',
@@ -431,7 +453,43 @@ const layoutBase = {
 };
 const config = { responsive: true, displayModeBar: false };
 
-// 1. Battle Mobile Money
+function fmtSentiment(v) {
+  return (v >= 0 ? '+' : '') + v.toFixed(2);
+}
+
+function renderAlerts(alerts) {
+  const tbody = document.getElementById('alertsTable');
+  tbody.innerHTML = alerts.map(a => {
+    const cls = a.sentiment >= 0 ? 'sent-pos' : 'sent-neg';
+    const statusClass = `status-${a.status}`;
+    return `<tr>
+      <td><span class="svc">${a.service}</span></td>
+      <td>${a.cat}</td>
+      <td class="num ${cls}">${fmtSentiment(a.sentiment)}</td>
+      <td class="num">${a.posts}</td>
+      <td>${a.since}</td>
+      <td><span class="status-badge ${statusClass}">${a.status}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function applyKpis(s) {
+  document.getElementById('kpiPosts').textContent = s.kpiPosts;
+  document.getElementById('kpiSentiment').textContent = s.kpiSentiment;
+  const trend = document.querySelector('#kpiSentiment + .kpi-trend');
+  trend.textContent = s.kpiSentimentTrend;
+  trend.className = 'kpi-trend ' + s.kpiSentimentTrendClass;
+  const crisesEl = document.getElementById('kpiCrises');
+  crisesEl.textContent = s.kpiCrises;
+  crisesEl.style.color = s.kpiCrisesColor;
+  crisesEl.nextElementSibling.textContent = s.kpiCrisesTrend;
+  document.getElementById('alertBanner').style.display = s.alertBanner ? 'flex' : 'none';
+  document.getElementById('alertText').textContent = s.alertText;
+  renderAlerts(s.alerts);
+}
+
+applyKpis(scenario);
+
 Plotly.newPlot('chartBattle', [{
   type: 'bar',
   x: ['Wave', 'Orange Money', 'Free Money'],
@@ -449,34 +507,26 @@ Plotly.newPlot('chartBattle', [{
   }]
 }, config);
 
-// 2. Timeline 24h
-const hours = Array.from({length: 24}, (_, i) => `${String(i).padStart(2,'0')}h`);
-const sentWave  = [-0.1,-0.15,-0.12,-0.08,0.1,0.05,-0.1,-0.2,-0.35,-0.55,-0.62,-0.67,
-                   -0.6,-0.5,-0.45,-0.3,-0.25,-0.2,-0.15,-0.1,-0.05,0,0.05,-0.05];
-const sentOM    = [-0.05,-0.08,-0.1,-0.05,0,0.02,-0.05,-0.08,-0.12,-0.15,-0.18,-0.2,
-                   -0.18,-0.15,-0.12,-0.1,-0.08,-0.05,0,0.05,-0.02,-0.05,-0.08,-0.1];
-const sentSEN   = [0,0,0.05,0,0.1,0.05,-0.1,-0.3,-0.45,-0.5,-0.55,-0.58,
-                   -0.5,-0.4,-0.3,-0.2,-0.15,-0.1,-0.05,0,0.05,0,-0.05,-0.1];
+const timelineShapes = scenario.timelineCrisisZone ? [{
+  type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: -1, y1: -0.5,
+  fillcolor: C.red, opacity: 0.08, line: { width: 0 }
+}] : [];
 
 Plotly.newPlot('chartTimeline', [
-  { x: hours, y: sentWave, name: 'Wave', line: { color: C.wave, width: 2.5, shape: 'spline' }, mode: 'lines' },
-  { x: hours, y: sentOM, name: 'Orange Money', line: { color: C.om, width: 2.5, shape: 'spline' }, mode: 'lines' },
-  { x: hours, y: sentSEN, name: 'Senelec', line: { color: C.senelec, width: 2.5, shape: 'spline' }, mode: 'lines' },
+  { x: hours, y: scenario.sentWave, name: 'Wave', line: { color: C.wave, width: 2.5, shape: 'spline' }, mode: 'lines' },
+  { x: hours, y: scenario.sentOM, name: 'Orange Money', line: { color: C.om, width: 2.5, shape: 'spline' }, mode: 'lines' },
+  { x: hours, y: scenario.sentSEN, name: 'Senelec', line: { color: C.senelec, width: 2.5, shape: 'spline' }, mode: 'lines' },
 ], {
   ...layoutBase,
   yaxis: { ...layoutBase.yaxis, title: 'Sentiment' },
   legend: { orientation: 'h', y: -0.2 },
-  shapes: [{
-    type: 'rect', xref: 'paper', x0: 0, x1: 1, y0: -1, y1: -0.5,
-    fillcolor: C.red, opacity: 0.08, line: { width: 0 }
-  }]
+  shapes: timelineShapes
 }, config);
 
-// 3. Catégories
 Plotly.newPlot('chartCategories', [{
   type: 'pie',
   labels: ['TECHNIQUE', 'TARIF', 'FRAUDE', 'SERVICE_CLIENT', 'POSITIF', 'AUTRE'],
-  values: [38, 22, 12, 14, 9, 5],
+  values: mode === 'crisis' ? [45, 18, 10, 12, 8, 7] : [38, 22, 12, 14, 9, 5],
   hole: 0.5,
   marker: { colors: [C.red, C.orange, '#dc2626', '#8b5cf6', C.green, '#64748b'], line: { color: C.bg, width: 2 } },
   textfont: { color: '#fff' },
@@ -487,14 +537,13 @@ Plotly.newPlot('chartCategories', [{
   legend: { orientation: 'h', y: -0.05, font: { size: 10 } }
 }, config);
 
-// 4. Parts de voix
 Plotly.newPlot('chartParts', [{
   type: 'bar',
   orientation: 'h',
-  x: [28, 22, 11, 18, 12, 9],
+  x: mode === 'crisis' ? [26, 20, 10, 24, 11, 9] : [28, 22, 11, 18, 12, 9],
   y: ['Wave', 'Orange Money', 'Free Money', 'Senelec', 'Sen Eau', 'TER'],
   marker: { color: [C.wave, C.om, C.free, C.senelec, C.eau, C.ter], line: { width: 0 } },
-  text: ['28%', '22%', '11%', '18%', '12%', '9%'],
+  text: mode === 'crisis' ? ['26%', '20%', '10%', '24%', '11%', '9%'] : ['28%', '22%', '11%', '18%', '12%', '9%'],
   textposition: 'outside',
   hovertemplate: '%{y} : %{x}%<extra></extra>'
 }], {
@@ -503,10 +552,6 @@ Plotly.newPlot('chartParts', [{
   yaxis: { ...layoutBase.yaxis, autorange: 'reversed' }
 }, config);
 
-// Bannière d'alerte
-document.getElementById('alertBanner').style.display = 'flex';
-
-// Heure de mise à jour
 function refreshClock() {
   document.getElementById('lastUpdate').textContent =
     new Date().toLocaleTimeString('fr-FR');

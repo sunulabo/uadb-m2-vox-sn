@@ -229,7 +229,6 @@ def build_dashboard(df_posts: pd.DataFrame, df_battle: pd.DataFrame) -> go.Figur
             go.Indicator(
                 mode='gauge+number+delta',
                 value=score,
-                domain={'row': 0, 'column': 0},
                 title={'text': f'<b>{service}</b>', 'font': {'size': 14}},
                 delta={'reference': 0, 'increasing': {'color': '#00C853'},
                        'decreasing': {'color': '#D50000'}},
@@ -277,8 +276,19 @@ def build_dashboard(df_posts: pd.DataFrame, df_battle: pd.DataFrame) -> go.Figur
             ),
             row=2, col=1,
         )
-    fig.add_hline(y=-0.5, line_dash='dash', line_color='red',
-                  annotation_text='Seuil crise', row=2, col=1)
+    # add_hline() échoue avec des subplots Indicator (Plotly 5.x) — trace dédiée
+    if not df_time.empty:
+        x0, x1 = df_time['ingestion_ts'].min(), df_time['ingestion_ts'].max()
+        fig.add_trace(
+            go.Scatter(
+                x=[x0, x1], y=[-0.5, -0.5],
+                mode='lines',
+                name='Seuil crise',
+                line={'color': 'red', 'dash': 'dash', 'width': 2},
+                hoverinfo='skip',
+            ),
+            row=2, col=1,
+        )
 
     # ── 3. Catégories par opérateur ──
     df_cat = (df_posts.groupby(['service_cible', 'categorie'])
